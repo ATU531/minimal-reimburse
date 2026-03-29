@@ -168,6 +168,54 @@ page {
   color: #667085;
 }
 
+.edit-form {
+  margin-top: 18rpx;
+}
+
+.edit-field {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f2f4f7;
+}
+
+.edit-field-last {
+  border-bottom: none;
+}
+
+.edit-label {
+  font-size: 24rpx;
+  color: #667085;
+}
+
+.edit-input,
+.edit-textarea {
+  margin-top: 12rpx;
+  width: 100%;
+  font-size: 26rpx;
+  color: #101828;
+  line-height: 1.6;
+}
+
+.edit-textarea {
+  min-height: 140rpx;
+}
+
+.edit-save-btn {
+  margin-top: 20rpx;
+  height: 84rpx;
+  border-radius: 22rpx;
+  background: #101828;
+  color: #ffffff;
+  font-size: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-link-danger {
+  margin-top: 18rpx;
+  color: #d92d20;
+}
+
 .bottom-actions {
   position: fixed;
   left: 24rpx;

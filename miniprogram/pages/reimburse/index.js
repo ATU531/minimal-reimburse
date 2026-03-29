@@ -1,5 +1,6 @@
 Page({
   data: {
+    loading: false,
     actionCards: [
       {
         id: "create",
@@ -56,6 +57,60 @@ Page({
         page: "/pages/reimburse-detail/index?id=rb-003",
       },
     ],
+    summary: {
+      draftCount: "0",
+      submittedCount: "0",
+      exportedCount: "0",
+    },
+  },
+  onShow() {
+    this.fetchReimbursements();
+  },
+  formatAmount(amountInCents) {
+    return `¥${(Number(amountInCents || 0) / 100).toFixed(2)}`;
+  },
+  fetchReimbursements() {
+    this.setData({
+      loading: true,
+    });
+    wx.cloud
+      .callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "listReimbursements",
+        },
+      })
+      .then((response) => {
+        const records = ((response.result && response.result.data) || []).map((item) => ({
+          id: item._id,
+          title: item.title,
+          amount: this.formatAmount(item.totalAmount),
+          status: item.statusLabel,
+          detail: item.detail,
+          page: `/pages/reimburse-detail/index?id=${item._id}`,
+        }));
+        const rawItems = (response.result && response.result.data) || [];
+        this.setData({
+          loading: false,
+          records,
+          summary: {
+            draftCount: String(
+              rawItems.filter((item) => item.status === "draft").length
+            ),
+            submittedCount: String(
+              rawItems.filter((item) => item.status === "submitted").length
+            ),
+            exportedCount: String(
+              rawItems.filter((item) => item.status === "approved").length
+            ),
+          },
+        });
+      })
+      .catch(() => {
+        this.setData({
+          loading: false,
+        });
+      });
   },
   handleTap(e) {
     const { page, label } = e.currentTarget.dataset;

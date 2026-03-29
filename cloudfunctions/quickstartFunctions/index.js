@@ -5,6 +5,7 @@ cloud.init({
 
 const db = cloud.database();
 const INVOICES_COLLECTION = "invoices";
+const REIMBURSEMENTS_COLLECTION = "reimbursements";
 
 const isCollectionMissingError = (error) => {
   const message = String(error && (error.errMsg || error.message || error));
@@ -295,6 +296,100 @@ const buildSampleInvoices = (openid) => {
   ];
 };
 
+const buildReimbursementNo = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const serial = String(now.getTime()).slice(-4);
+  return `RB${year}${month}${day}${serial}`;
+};
+
+const getReimbursementStatusLabel = (status) => {
+  const statusMap = {
+    draft: "草稿",
+    pending_submit: "待提交",
+    submitted: "已提交",
+    approved: "已通过",
+    rejected: "已驳回",
+    archived: "已归档",
+  };
+  return statusMap[status] || "草稿";
+};
+
+const buildReimbursementTimeline = (reimbursement) => {
+  return [
+    {
+      title: "创建报销单",
+      meta: `${reimbursement.invoiceCount} 张发票 · 自动生成草稿`,
+    },
+    {
+      title: "归集发票",
+      meta: `当前总金额 ${(Number(reimbursement.totalAmount || 0) / 100).toFixed(
+        2
+      )} 元`,
+    },
+    {
+      title: reimbursement.status === "submitted" ? "已提交审批" : "等待提交审批",
+      meta:
+        reimbursement.status === "submitted" ? "当前已进入审批流程" : "当前状态",
+    },
+  ];
+};
+
+const buildReimbursementSnapshots = (invoices) => {
+  return invoices.map((invoice) => ({
+    invoiceId: invoice._id,
+    title: invoice.title,
+    amount: invoice.totalAmount || invoice.amount,
+    issueDate: invoice.issueDate,
+    invoiceCode: invoice.invoiceCode,
+    invoiceNumber: invoice.invoiceNumber,
+    buyerName: invoice.buyerName,
+  }));
+};
+
+const formatReimbursementSummary = (reimbursement) => {
+  return {
+    _id: reimbursement._id,
+    title: reimbursement.title,
+    reimbursementNo: reimbursement.reimbursementNo,
+    status: reimbursement.status,
+    statusLabel: getReimbursementStatusLabel(reimbursement.status),
+    invoiceCount: reimbursement.invoiceCount,
+    totalAmount: reimbursement.totalAmount,
+    applicant: reimbursement.applicant,
+    department: reimbursement.department,
+    detail: `${reimbursement.invoiceCount} 张发票 · ${reimbursement.applicant}`,
+    createdAt: reimbursement.createdAt,
+    updatedAt: reimbursement.updatedAt,
+  };
+};
+
+const updateInvoicesReimbursementState = async (
+  openid,
+  invoiceIds,
+  reimburseStatus,
+  linkedReimbursementId
+) => {
+  for (let i = 0; i < invoiceIds.length; i++) {
+    await db
+      .collection(INVOICES_COLLECTION)
+      .where({
+        _id: invoiceIds[i],
+        openid,
+        deletedAt: null,
+      })
+      .update({
+        data: {
+          reimburseStatus,
+          linkedReimbursementId: linkedReimbursementId || "",
+          updatedAt: Date.now(),
+        },
+      });
+  }
+};
+
 const ensureInvoiceSeedData = async () => {
   const wxContext = cloud.getWXContext();
   const openid = wxContext.OPENID;
@@ -324,11 +419,82 @@ const ensureInvoiceSeedData = async () => {
   };
 };
 
+const ensureReimbursementCollection = async () => {
+  await ensureCollectionExists(REIMBURSEMENTS_COLLECTION);
+};
+
 const createInvoiceCollection = async () => {
   const result = await ensureInvoiceSeedData();
   return {
     success: true,
     data: result,
+  };
+};
+
+const listReimbursements = async () => {
+  const invoiceSeedResult = await ensureInvoiceSeedData();
+  await ensureReimbursementCollection();
+  const records = await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .orderBy("updatedAt", "desc")
+    .get();
+  return {
+    success: true,
+    data: records.data.map((item) => formatReimbursementSummary(item)),
+  };
+};
+
+const getReimbursementDetail = async (event) => {
+  const invoiceSeedResult = await ensureInvoiceSeedData();
+  await ensureReimbursementCollection();
+  const reimbursementId = event.id || (event.data && event.data.id);
+  if (!reimbursementId) {
+    return {
+      success: false,
+      errMsg: "reimbursement id is required",
+    };
+  }
+  const result = await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      _id: reimbursementId,
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .limit(1)
+    .get();
+  if (!result.data.length) {
+    return {
+      success: false,
+      errMsg: "reimbursement not found",
+    };
+  }
+  const reimbursement = result.data[0];
+  return {
+    success: true,
+    data: {
+      _id: reimbursement._id,
+      title: reimbursement.title,
+      subtitle: reimbursement.subtitle,
+      status: reimbursement.status,
+      statusLabel: getReimbursementStatusLabel(reimbursement.status),
+      reimbursementNo: reimbursement.reimbursementNo,
+      applicant: reimbursement.applicant,
+      department: reimbursement.department,
+      projectName: reimbursement.projectName,
+      expenseCategory: reimbursement.expenseCategory,
+      remark: reimbursement.remark,
+      invoiceCount: reimbursement.invoiceCount,
+      totalAmount: reimbursement.totalAmount,
+      invoices: reimbursement.invoiceSnapshots || [],
+      timeline: buildReimbursementTimeline(reimbursement),
+      createdAt: reimbursement.createdAt,
+      updatedAt: reimbursement.updatedAt,
+    },
   };
 };
 
@@ -537,6 +703,245 @@ const createInvoice = async (event) => {
     data: {
       _id: addResult._id,
       duplicated: false,
+    },
+  };
+};
+
+const createReimbursementDraft = async (event) => {
+  const invoiceSeedResult = await ensureInvoiceSeedData();
+  await ensureReimbursementCollection();
+  const invoiceIds = (event.invoiceIds || (event.data && event.data.invoiceIds) || []).filter(
+    Boolean
+  );
+  if (!invoiceIds.length) {
+    return {
+      success: false,
+      errMsg: "invoice ids are required",
+    };
+  }
+  const invoiceRecords = await db
+    .collection(INVOICES_COLLECTION)
+    .where({
+      _id: db.command.in(invoiceIds),
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .get();
+  const availableInvoices = invoiceRecords.data.filter(
+    (item) => item.reimburseStatus !== "reimbursed"
+  );
+  if (!availableInvoices.length) {
+    return {
+      success: false,
+      errMsg: "no available invoices for reimbursement",
+    };
+  }
+  const reimbursementNo = buildReimbursementNo();
+  const totalAmount = availableInvoices.reduce(
+    (total, item) => total + Number(item.totalAmount || item.amount || 0),
+    0
+  );
+  const now = Date.now();
+  const reimbursementData = {
+    openid: invoiceSeedResult.openid,
+    tenantId: "default",
+    reimbursementNo,
+    title:
+      (event.title || (event.data && event.data.title)) ||
+      `${new Date().getMonth() + 1}月报销单`,
+    subtitle: "由票夹勾选发票自动生成",
+    status: "draft",
+    applicant: "当前用户",
+    department: "待填写",
+    projectName: "待填写",
+    expenseCategory: "待分类",
+    invoiceIds: availableInvoices.map((item) => item._id),
+    invoiceSnapshots: buildReimbursementSnapshots(availableInvoices),
+    invoiceCount: availableInvoices.length,
+    subtotalAmount: totalAmount,
+    taxAmount: 0,
+    totalAmount,
+    templateId: "default_reimbursement_template",
+    formFields: {},
+    exportSummary: {},
+    printSummary: {},
+    submittedAt: null,
+    approvedAt: null,
+    archivedAt: null,
+    deletedAt: null,
+    remark: "",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const addResult = await db.collection(REIMBURSEMENTS_COLLECTION).add({
+    data: reimbursementData,
+  });
+  await updateInvoicesReimbursementState(
+    invoiceSeedResult.openid,
+    availableInvoices.map((item) => item._id),
+    "in_reimbursement",
+    addResult._id
+  );
+  return {
+    success: true,
+    data: {
+      _id: addResult._id,
+      invoiceCount: availableInvoices.length,
+      totalAmount,
+    },
+  };
+};
+
+const updateReimbursement = async (event) => {
+  const invoiceSeedResult = await ensureInvoiceSeedData();
+  await ensureReimbursementCollection();
+  const reimbursementId = event.id || (event.data && event.data.id);
+  const payload = (event && event.data) || {};
+  if (!reimbursementId) {
+    return {
+      success: false,
+      errMsg: "reimbursement id is required",
+    };
+  }
+  await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      _id: reimbursementId,
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .update({
+      data: {
+        title: payload.title || "未命名报销单",
+        subtitle: payload.subtitle || "由票夹勾选发票自动生成",
+        applicant: payload.applicant || "当前用户",
+        department: payload.department || "待填写",
+        projectName: payload.projectName || "待填写",
+        expenseCategory: payload.expenseCategory || "待分类",
+        remark: payload.remark || "",
+        updatedAt: Date.now(),
+      },
+    });
+  return {
+    success: true,
+    data: {
+      _id: reimbursementId,
+      updated: true,
+    },
+  };
+};
+
+const submitReimbursement = async (event) => {
+  const invoiceSeedResult = await ensureInvoiceSeedData();
+  await ensureReimbursementCollection();
+  const reimbursementId = event.id || (event.data && event.data.id);
+  if (!reimbursementId) {
+    return {
+      success: false,
+      errMsg: "reimbursement id is required",
+    };
+  }
+  const result = await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      _id: reimbursementId,
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .limit(1)
+    .get();
+  if (!result.data.length) {
+    return {
+      success: false,
+      errMsg: "reimbursement not found",
+    };
+  }
+  const reimbursement = result.data[0];
+  await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      _id: reimbursementId,
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .update({
+      data: {
+        status: "submitted",
+        submittedAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    });
+  await updateInvoicesReimbursementState(
+    invoiceSeedResult.openid,
+    reimbursement.invoiceIds || [],
+    "reimbursed",
+    reimbursementId
+  );
+  return {
+    success: true,
+    data: {
+      _id: reimbursementId,
+      submitted: true,
+    },
+  };
+};
+
+const deleteReimbursementDraft = async (event) => {
+  const invoiceSeedResult = await ensureInvoiceSeedData();
+  await ensureReimbursementCollection();
+  const reimbursementId = event.id || (event.data && event.data.id);
+  if (!reimbursementId) {
+    return {
+      success: false,
+      errMsg: "reimbursement id is required",
+    };
+  }
+  const result = await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      _id: reimbursementId,
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .limit(1)
+    .get();
+  if (!result.data.length) {
+    return {
+      success: false,
+      errMsg: "reimbursement not found",
+    };
+  }
+  const reimbursement = result.data[0];
+  if (reimbursement.status !== "draft") {
+    return {
+      success: false,
+      errMsg: "only draft reimbursement can be deleted",
+    };
+  }
+  await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      _id: reimbursementId,
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .update({
+      data: {
+        deletedAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    });
+  await updateInvoicesReimbursementState(
+    invoiceSeedResult.openid,
+    reimbursement.invoiceIds || [],
+    "unreimbursed",
+    ""
+  );
+  return {
+    success: true,
+    data: {
+      _id: reimbursementId,
+      deleted: true,
     },
   };
 };
@@ -899,5 +1304,17 @@ exports.main = async (event, context) => {
       return await deleteInvoice(event);
     case "syncLocalInvoices":
       return await syncLocalInvoices(event);
+    case "createReimbursementDraft":
+      return await createReimbursementDraft(event);
+    case "listReimbursements":
+      return await listReimbursements();
+    case "getReimbursementDetail":
+      return await getReimbursementDetail(event);
+    case "updateReimbursement":
+      return await updateReimbursement(event);
+    case "submitReimbursement":
+      return await submitReimbursement(event);
+    case "deleteReimbursementDraft":
+      return await deleteReimbursementDraft(event);
   }
 };

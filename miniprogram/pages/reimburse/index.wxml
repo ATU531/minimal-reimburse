@@ -9,15 +9,15 @@
     </view>
     <view class="hero-summary">
       <view class="summary-item">
-        <view class="summary-value">6</view>
+        <view class="summary-value">{{summary.draftCount}}</view>
         <view class="summary-label">待提交</view>
       </view>
       <view class="summary-item">
-        <view class="summary-value">3</view>
+        <view class="summary-value">{{summary.submittedCount}}</view>
         <view class="summary-label">审批中</view>
       </view>
       <view class="summary-item">
-        <view class="summary-value">14</view>
+        <view class="summary-value">{{summary.exportedCount}}</view>
         <view class="summary-label">已导出</view>
       </view>
     </view>
@@ -44,6 +44,10 @@
   <view class="section">
     <view class="section-title">最近报销单</view>
     <view class="record-list">
+      <view class="record-card" wx:if="{{!records.length}}">
+        <view class="record-title">还没有报销单</view>
+        <view class="record-detail">可以先去票夹勾选发票，再生成报销单草稿。</view>
+      </view>
       <view class="record-card" wx:for="{{records}}" wx:key="id" wx:for-item="item" data-label="{{item.title}}" data-page="{{item.page}}" bindtap="handleTap">
         <view class="record-head">
           <view class="record-title">{{item.title}}</view>

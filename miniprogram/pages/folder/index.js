@@ -343,6 +343,54 @@ Page({
   },
   handleAction(e) {
     const { label, page } = e.currentTarget.dataset;
+    if (label === "加入报销单") {
+      const selectedInvoices = this.data.invoices.filter((item) => item.selected);
+      if (!selectedInvoices.length) {
+        wx.showToast({
+          title: "请先勾选发票",
+          icon: "none",
+        });
+        return;
+      }
+      if (selectedInvoices.some((item) => String(item.id).startsWith("local-"))) {
+        wx.showToast({
+          title: "请等待本地草稿同步后再创建报销单",
+          icon: "none",
+        });
+        return;
+      }
+      wx.showLoading({
+        title: "生成草稿中",
+        mask: true,
+      });
+      wx.cloud
+        .callFunction({
+          name: "quickstartFunctions",
+          data: {
+            type: "createReimbursementDraft",
+            invoiceIds: selectedInvoices.map((item) => item.id),
+            title: "票夹新建报销单",
+          },
+        })
+        .then((response) => {
+          const result = response.result;
+          if (!result || result.success === false || !(result.data && result.data._id)) {
+            throw new Error((result && result.errMsg) || "create reimbursement failed");
+          }
+          wx.hideLoading();
+          wx.navigateTo({
+            url: `/pages/reimburse-detail/index?id=${result.data._id}`,
+          });
+        })
+        .catch(() => {
+          wx.hideLoading();
+          wx.showToast({
+            title: "生成报销单失败",
+            icon: "none",
+          });
+        });
+      return;
+    }
     if (page) {
       wx.navigateTo({
         url: page,
