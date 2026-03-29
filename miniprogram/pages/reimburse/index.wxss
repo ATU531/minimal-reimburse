@@ -1,0 +1,179 @@
+page {
+  background: #f4f7fb;
+}
+
+.page {
+  padding: 24rpx;
+  font-family: PingFang SC;
+}
+
+.hero-card {
+  padding: 32rpx;
+  border-radius: 32rpx;
+  background: linear-gradient(135deg, #ffffff 0%, #edf2ff 100%);
+  box-shadow: 0 10rpx 30rpx rgba(16, 24, 40, 0.05);
+}
+
+.hero-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.hero-title {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.hero-desc {
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #667085;
+}
+
+.hero-pill {
+  height: 56rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 22rpx;
+  display: flex;
+  align-items: center;
+}
+
+.hero-summary {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 28rpx;
+}
+
+.summary-item {
+  flex: 1;
+  padding: 22rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.summary-value {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.summary-label {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #667085;
+}
+
+.section {
+  margin-top: 28rpx;
+}
+
+.section-title {
+  margin-bottom: 18rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.action-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18rpx;
+}
+
+.action-card {
+  width: calc(50% - 9rpx);
+  padding: 28rpx;
+  box-sizing: border-box;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 30rpx rgba(16, 24, 40, 0.05);
+}
+
+.action-card-primary {
+  background: linear-gradient(135deg, #4f6ef7 0%, #7c96ff 100%);
+}
+
+.action-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.action-card-primary .action-title,
+.action-card-primary .action-desc {
+  color: #ffffff;
+}
+
+.action-desc {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #667085;
+}
+
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.record-card,
+.tips-card {
+  padding: 28rpx;
+  background: #ffffff;
+  border-radius: 28rpx;
+  box-shadow: 0 10rpx 30rpx rgba(16, 24, 40, 0.05);
+}
+
+.record-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14rpx;
+}
+
+.record-title {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.record-status {
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 20rpx;
+}
+
+.record-amount {
+  margin-top: 16rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.record-detail {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #667085;
+}
+
+.tips-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #344054;
+}
+
+.tips-text {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #667085;
+}

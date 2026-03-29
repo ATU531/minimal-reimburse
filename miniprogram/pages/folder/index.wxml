@@ -1,0 +1,64 @@
+<view class="page">
+  <view class="search-card">
+    <view class="search-row">
+      <view class="search-box">搜索发票名称、抬头或金额</view>
+      <view class="filter-trigger">筛选</view>
+    </view>
+    <scroll-view scroll-x class="filter-scroll" enable-flex="true">
+      <view class="filter-list">
+        <view
+          class="filter-pill {{activeFilter === item.id ? 'filter-pill-active' : ''}}"
+          wx:for="{{filters}}"
+          wx:key="id"
+          wx:for-item="item"
+          data-id="{{item.id}}"
+          bindtap="selectFilter"
+        >
+          {{item.label}}
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="summary-row">
+    <view class="summary-card" wx:for="{{summaryCards}}" wx:key="label" wx:for-item="item">
+      <view class="summary-label">{{item.label}}</view>
+      <view class="summary-value">{{item.value}}</view>
+    </view>
+  </view>
+
+  <view class="invoice-list">
+    <view
+      class="invoice-card {{item.selected ? 'invoice-card-selected' : ''}}"
+      wx:for="{{invoices}}"
+      wx:key="id"
+      wx:for-item="item"
+      data-id="{{item.id}}"
+      bindtap="toggleInvoice"
+    >
+      <view class="invoice-head">
+        <view class="invoice-type-group">
+          <view class="selection-mark {{item.selected ? 'selection-mark-active' : ''}}"></view>
+          <view class="invoice-chip">{{item.type}}</view>
+          <view class="invoice-chip invoice-chip-light">{{item.source}}</view>
+        </view>
+        <view class="invoice-amount">{{item.amount}}</view>
+      </view>
+      <view class="invoice-title">{{item.title}}</view>
+      <view class="invoice-meta">开票日期 {{item.date}}</view>
+      <view class="invoice-meta">{{item.owner}}</view>
+      <view class="tag-row">
+        <view class="status-tag" wx:for="{{item.tags}}" wx:key="*this" wx:for-item="tag">{{tag}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-bar">
+    <view class="selection-summary">已选 {{selectedCount}} 张发票</view>
+    <view class="bottom-actions">
+      <view class="secondary-btn" data-label="导出 PDF" bindtap="handleAction">导出 PDF</view>
+      <view class="secondary-btn" data-label="导出 Excel" bindtap="handleAction">导出 Excel</view>
+      <view class="primary-btn" data-label="加入报销单" bindtap="handleAction">加入报销单</view>
+    </view>
+  </view>
+</view>

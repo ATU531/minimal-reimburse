@@ -1,0 +1,47 @@
+<view class="page">
+  <view class="profile-card">
+    <view class="avatar">票</view>
+    <view class="profile-main">
+      <view class="profile-name">轻票夹</view>
+      <view class="profile-subtitle">企业票据整理与报销协作</view>
+    </view>
+  </view>
+
+  <view class="invite-card" data-label="邀请同事" bindtap="handleTap">
+    <view>
+      <view class="invite-title">邀请团队成员协作</view>
+      <view class="invite-desc">后续可扩展协同整理、审批流与共享票夹能力。</view>
+    </view>
+    <view class="invite-link">立即邀请</view>
+  </view>
+
+  <view class="stats-row">
+    <view class="stat-card">
+      <view class="stat-value">2</view>
+      <view class="stat-label">企业主体</view>
+    </view>
+    <view class="stat-card">
+      <view class="stat-value">5</view>
+      <view class="stat-label">导出模板</view>
+    </view>
+    <view class="stat-card">
+      <view class="stat-value">9</view>
+      <view class="stat-label">常用科目</view>
+    </view>
+  </view>
+
+  <view class="group-card" wx:for="{{menuGroups}}" wx:key="id" wx:for-item="group">
+    <view class="group-title">{{group.title}}</view>
+    <view
+      class="menu-item"
+      wx:for="{{group.items}}"
+      wx:key="*this"
+      wx:for-item="entry"
+      data-label="{{entry}}"
+      bindtap="handleTap"
+    >
+      <view class="menu-label">{{entry}}</view>
+      <view class="menu-arrow">›</view>
+    </view>
+  </view>
+</view>

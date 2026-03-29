@@ -1,0 +1,63 @@
+<view class="page">
+  <view class="hero-card">
+    <view class="hero-header">
+      <view>
+        <view class="hero-title">报销流程中心</view>
+        <view class="hero-desc">围绕报销单创建、草稿流转、导出与打印配置组织页面内容。</view>
+      </view>
+      <view class="hero-pill">静态版</view>
+    </view>
+    <view class="hero-summary">
+      <view class="summary-item">
+        <view class="summary-value">6</view>
+        <view class="summary-label">待提交</view>
+      </view>
+      <view class="summary-item">
+        <view class="summary-value">3</view>
+        <view class="summary-label">审批中</view>
+      </view>
+      <view class="summary-item">
+        <view class="summary-value">14</view>
+        <view class="summary-label">已导出</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">报销操作</view>
+    <view class="action-grid">
+      <view
+        class="action-card {{item.accent === 'primary' ? 'action-card-primary' : ''}}"
+        wx:for="{{actionCards}}"
+        wx:key="id"
+        wx:for-item="item"
+        data-label="{{item.title}}"
+        bindtap="handleTap"
+      >
+        <view class="action-title">{{item.title}}</view>
+        <view class="action-desc">{{item.desc}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">最近报销单</view>
+    <view class="record-list">
+      <view class="record-card" wx:for="{{records}}" wx:key="id" wx:for-item="item" data-label="{{item.title}}" bindtap="handleTap">
+        <view class="record-head">
+          <view class="record-title">{{item.title}}</view>
+          <view class="record-status">{{item.status}}</view>
+        </view>
+        <view class="record-amount">{{item.amount}}</view>
+        <view class="record-detail">{{item.detail}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="tips-card">
+      <view class="tips-title">下一步建议</view>
+      <view class="tips-text">后续可以继续补静态页面：报销单详情、模板设置、打印预览、导出结果页。</view>
+    </view>
+  </view>
+</view>

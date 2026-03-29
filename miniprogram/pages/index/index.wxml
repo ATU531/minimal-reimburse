@@ -1,0 +1,101 @@
+<view class="container">
+  <view class="hero-card">
+    <view class="hero-top">
+      <view>
+        <view class="hero-kicker">Invoice Workspace</view>
+        <view class="hero-title">轻量发票与报销助手</view>
+        <view class="hero-desc">先完成静态页面设计，覆盖录入、票夹、报销单与导出场景。</view>
+      </view>
+      <view class="hero-badge">Beta</view>
+    </view>
+    <view class="hero-stats">
+      <view class="hero-stat">
+        <view class="hero-stat-value">128</view>
+        <view class="hero-stat-label">总发票</view>
+      </view>
+      <view class="hero-stat">
+        <view class="hero-stat-value">36</view>
+        <view class="hero-stat-label">待报销</view>
+      </view>
+      <view class="hero-stat">
+        <view class="hero-stat-value">18</view>
+        <view class="hero-stat-label">可导出</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <view>
+        <view class="section-title">发票录入</view>
+        <view class="section-desc">覆盖你当前规划的主流入口，优先做成简单清晰的静态信息架构。</view>
+      </view>
+    </view>
+    <view class="entry-grid">
+      <view
+        class="entry-card"
+        wx:for="{{intakeMethods}}"
+        wx:key="id"
+        wx:for-item="item"
+        bindtap="handleEntryTap"
+        data-label="{{item.title}}"
+      >
+        <view class="entry-icon">{{item.short}}</view>
+        <view class="entry-title">{{item.title}}</view>
+        <view class="entry-desc">{{item.desc}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <view>
+        <view class="section-title">核心功能</view>
+        <view class="section-desc">先把主要工作流入口铺平，后续再逐步接入云函数、OCR、导出与业务规则。</view>
+      </view>
+    </view>
+    <view class="feature-list">
+      <view
+        class="feature-card"
+        wx:for="{{featureCards}}"
+        wx:key="id"
+        wx:for-item="item"
+        bindtap="handleFeatureTap"
+        data-action="{{item.action}}"
+        data-page="{{item.page}}"
+        data-label="{{item.title}}"
+      >
+        <view class="feature-main">
+          <view class="feature-title-row">
+            <view class="feature-title">{{item.title}}</view>
+            <view class="feature-tag">{{item.tag}}</view>
+          </view>
+          <view class="feature-desc">{{item.desc}}</view>
+        </view>
+        <view class="feature-arrow">→</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <view>
+        <view class="section-title">本周提醒</view>
+        <view class="section-desc">通过轻量卡片承接状态信息，减少首次使用时的认知负担。</view>
+      </view>
+    </view>
+    <view class="reminder-list">
+      <view class="reminder-card" wx:for="{{reminders}}" wx:key="title" wx:for-item="item">
+        <view class="reminder-label">{{item.title}}</view>
+        <view class="reminder-value">{{item.value}}</view>
+        <view class="reminder-helper">{{item.helper}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="floating-note">
+    <view class="floating-note-title">设计假设</view>
+    <view class="floating-note-text">当前先完成静态页面与轻交互，后续再接入真实录入、票夹筛选、导出与报销流程。</view>
+  </view>
+  <view class="page-spacer"></view>
+</view>
