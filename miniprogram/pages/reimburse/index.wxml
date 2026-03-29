@@ -32,6 +32,7 @@
         wx:key="id"
         wx:for-item="item"
         data-label="{{item.title}}"
+        data-page="{{item.page}}"
         bindtap="handleTap"
       >
         <view class="action-title">{{item.title}}</view>
@@ -43,7 +44,7 @@
   <view class="section">
     <view class="section-title">最近报销单</view>
     <view class="record-list">
-      <view class="record-card" wx:for="{{records}}" wx:key="id" wx:for-item="item" data-label="{{item.title}}" bindtap="handleTap">
+      <view class="record-card" wx:for="{{records}}" wx:key="id" wx:for-item="item" data-label="{{item.title}}" data-page="{{item.page}}" bindtap="handleTap">
         <view class="record-head">
           <view class="record-title">{{item.title}}</view>
           <view class="record-status">{{item.status}}</view>

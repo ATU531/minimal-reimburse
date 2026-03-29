@@ -35,12 +35,13 @@
     <view
       class="menu-item"
       wx:for="{{group.items}}"
-      wx:key="*this"
+      wx:key="label"
       wx:for-item="entry"
-      data-label="{{entry}}"
+      data-label="{{entry.label}}"
+      data-page="{{entry.page}}"
       bindtap="handleTap"
     >
-      <view class="menu-label">{{entry}}</view>
+      <view class="menu-label">{{entry.label}}</view>
       <view class="menu-arrow">›</view>
     </view>
   </view>

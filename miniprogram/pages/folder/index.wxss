@@ -185,6 +185,12 @@ page {
   font-size: 20rpx;
 }
 
+.detail-link {
+  margin-top: 18rpx;
+  font-size: 22rpx;
+  color: #4f6ef7;
+}
+
 .bottom-bar {
   position: fixed;
   left: 24rpx;

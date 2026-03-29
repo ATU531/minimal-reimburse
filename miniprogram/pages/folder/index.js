@@ -71,9 +71,21 @@ Page({
       selectedCount,
     });
   },
+  openInvoiceDetail(e) {
+    wx.navigateTo({
+      url: `/pages/invoice-detail/index?id=${e.currentTarget.dataset.id}`,
+    });
+  },
   handleAction(e) {
+    const { label, page } = e.currentTarget.dataset;
+    if (page) {
+      wx.navigateTo({
+        url: page,
+      });
+      return;
+    }
     wx.showToast({
-      title: e.currentTarget.dataset.label,
+      title: label,
       icon: "none",
     });
   },

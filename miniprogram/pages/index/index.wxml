@@ -39,6 +39,7 @@
         wx:for-item="item"
         bindtap="handleEntryTap"
         data-label="{{item.title}}"
+        data-page="{{item.page}}"
       >
         <view class="entry-icon">{{item.short}}</view>
         <view class="entry-title">{{item.title}}</view>

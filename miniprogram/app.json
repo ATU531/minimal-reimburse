@@ -4,6 +4,11 @@
     "pages/folder/index",
     "pages/reimburse/index",
     "pages/profile/index",
+    "pages/intake-detail/index",
+    "pages/invoice-detail/index",
+    "pages/reimburse-detail/index",
+    "pages/settings/index",
+    "pages/export-center/index",
     "pages/example/index"
   ],
   "window": {

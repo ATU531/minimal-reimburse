@@ -1,0 +1,19 @@
+<view class="page">
+  <view class="hero-card">
+    <view class="hero-title">{{currentSection.title}}</view>
+    <view class="hero-desc">{{currentSection.subtitle}}</view>
+  </view>
+
+  <view class="group-card" wx:for="{{settingGroups}}" wx:key="title" wx:for-item="group">
+    <view class="group-title">{{group.title}}</view>
+    <view class="setting-item" wx:for="{{group.items}}" wx:key="*this" wx:for-item="item" data-label="{{item}}" bindtap="handleTap">
+      <view class="setting-label">{{item}}</view>
+      <view class="setting-state">已启用</view>
+    </view>
+  </view>
+
+  <view class="tips-card">
+    <view class="tips-title">配置说明</view>
+    <view class="tips-text">当前为静态页面示意，后续可接入企业配置、字段模板、打印样式和成员权限配置。</view>
+  </view>
+</view>

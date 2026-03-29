@@ -1,0 +1,157 @@
+page {
+  background: #f4f7fb;
+}
+
+.page {
+  padding: 24rpx 24rpx 180rpx;
+  font-family: PingFang SC;
+}
+
+.hero-card,
+.section-card {
+  padding: 30rpx;
+  border-radius: 30rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 30rpx rgba(16, 24, 40, 0.05);
+}
+
+.hero-card {
+  background: linear-gradient(135deg, #ffffff 0%, #edf2ff 100%);
+}
+
+.amount {
+  font-size: 52rpx;
+  font-weight: 700;
+  color: #4f6ef7;
+}
+
+.title {
+  margin-top: 14rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #101828;
+  line-height: 1.5;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.tag {
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.78);
+  color: #4f46e5;
+  font-size: 20rpx;
+}
+
+.section-card {
+  margin-top: 22rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.info-list {
+  margin-top: 16rpx;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f2f4f7;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  width: 160rpx;
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #667085;
+}
+
+.value {
+  flex: 1;
+  text-align: right;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #101828;
+}
+
+.timeline {
+  margin-top: 20rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 16rpx;
+}
+
+.timeline-dot {
+  width: 20rpx;
+  height: 20rpx;
+  margin-top: 12rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f6ef7 0%, #7c96ff 100%);
+}
+
+.timeline-main {
+  flex: 1;
+}
+
+.timeline-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.timeline-meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #667085;
+}
+
+.bottom-actions {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(env(safe-area-inset-bottom) + 20rpx);
+  display: flex;
+  gap: 14rpx;
+}
+
+.secondary-btn,
+.primary-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+}
+
+.secondary-btn {
+  background: #ffffff;
+  color: #344054;
+  box-shadow: 0 10rpx 30rpx rgba(16, 24, 40, 0.05);
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #4f6ef7 0%, #7c96ff 100%);
+  color: #ffffff;
+}
