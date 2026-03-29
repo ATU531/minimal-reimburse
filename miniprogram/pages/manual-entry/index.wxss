@@ -1,0 +1,100 @@
+page {
+  background: #f4f7fb;
+}
+
+.page {
+  padding: 24rpx 24rpx 160rpx;
+  font-family: PingFang SC;
+}
+
+.hero-card,
+.form-card {
+  padding: 30rpx;
+  border-radius: 30rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 30rpx rgba(16, 24, 40, 0.05);
+}
+
+.hero-card {
+  background: linear-gradient(135deg, #ffffff 0%, #edf2ff 100%);
+}
+
+.hero-title {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.hero-desc {
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #667085;
+}
+
+.form-card {
+  margin-top: 22rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.field {
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f2f4f7;
+}
+
+.field-last {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.field-label {
+  font-size: 24rpx;
+  color: #475467;
+}
+
+.field-input,
+.picker-value,
+.field-textarea {
+  margin-top: 14rpx;
+  width: 100%;
+  font-size: 28rpx;
+  color: #101828;
+  line-height: 1.6;
+}
+
+.field-input,
+.picker-value {
+  min-height: 44rpx;
+}
+
+.field-textarea {
+  min-height: 160rpx;
+}
+
+.submit-bar {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(env(safe-area-inset-bottom) + 20rpx);
+}
+
+.submit-btn {
+  height: 92rpx;
+  border-radius: 26rpx;
+  background: linear-gradient(135deg, #4f6ef7 0%, #7c96ff 100%);
+  color: #ffffff;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 18rpx 36rpx rgba(79, 110, 247, 0.22);
+}
+
+.submit-btn-disabled {
+  opacity: 0.6;
+}

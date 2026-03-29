@@ -191,6 +191,26 @@ page {
   color: #4f6ef7;
 }
 
+.empty-card {
+  padding: 48rpx 24rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 10rpx 30rpx rgba(16, 24, 40, 0.05);
+  text-align: center;
+}
+
+.empty-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.empty-desc {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #667085;
+}
+
 .bottom-bar {
   position: fixed;
   left: 24rpx;

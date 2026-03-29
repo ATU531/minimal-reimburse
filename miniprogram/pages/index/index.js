@@ -48,7 +48,7 @@ Page({
         title: "手动录入",
         short: "填",
         desc: "手动补录金额、抬头、税号等信息",
-        page: "/pages/intake-detail/index?source=manual",
+        page: "/pages/manual-entry/index",
       },
       {
         id: "more",

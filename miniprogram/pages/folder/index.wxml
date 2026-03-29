@@ -1,8 +1,8 @@
 <view class="page">
   <view class="search-card">
     <view class="search-row">
-      <view class="search-box">搜索发票名称、抬头或金额</view>
-      <view class="filter-trigger">筛选</view>
+      <input class="search-box" placeholder="搜索发票名称、抬头、金额、代码、号码" value="{{searchKeyword}}" bindinput="handleSearchInput" />
+      <view class="filter-trigger" bindtap="clearSearch">{{searchKeyword ? '清空' : '筛选'}}</view>
     </view>
     <scroll-view scroll-x class="filter-scroll" enable-flex="true">
       <view class="filter-list">
@@ -28,7 +28,12 @@
   </view>
 
   <view class="invoice-list">
+    <view class="empty-card" wx:if="{{!invoices.length}}">
+      <view class="empty-title">没有匹配的发票</view>
+      <view class="empty-desc">试试调整搜索关键词或筛选条件。</view>
+    </view>
     <view
+      wx:if="{{invoices.length}}"
       class="invoice-card {{item.selected ? 'invoice-card-selected' : ''}}"
       wx:for="{{invoices}}"
       wx:key="id"

@@ -1,0 +1,70 @@
+<view class="page">
+  <view class="hero-card">
+    <view class="hero-title">手动录入发票</view>
+    <view class="hero-desc">先完成最小录入闭环：填写核心字段，提交后直接进入票夹。</view>
+  </view>
+
+  <view class="form-card">
+    <view class="section-title">核心字段</view>
+    <view class="field">
+      <view class="field-label">发票标题</view>
+      <input class="field-input" placeholder="例如：信息服务 · 软件订阅" data-field="title" bindinput="handleInput" value="{{form.title}}" />
+    </view>
+    <view class="field">
+      <view class="field-label">发票金额</view>
+      <input class="field-input" type="digit" placeholder="例如：3980.00" data-field="amount" bindinput="handleInput" value="{{form.amount}}" />
+    </view>
+    <view class="field">
+      <view class="field-label">开票日期</view>
+      <picker mode="date" value="{{form.issueDate}}" bindchange="handleDateChange">
+        <view class="picker-value">{{form.issueDate}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="field-label">发票类型</view>
+      <picker range="{{invoiceTypeOptions}}" range-key="label" value="{{invoiceTypeIndex}}" bindchange="handleInvoiceTypeChange">
+        <view class="picker-value">{{invoiceTypeOptions[invoiceTypeIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="field-label">录入来源</view>
+      <picker range="{{sourceOptions}}" range-key="label" value="{{sourceIndex}}" bindchange="handleSourceChange">
+        <view class="picker-value">{{sourceOptions[sourceIndex].label}}</view>
+      </picker>
+    </view>
+  </view>
+
+  <view class="form-card">
+    <view class="section-title">补充信息</view>
+    <view class="field">
+      <view class="field-label">购买方</view>
+      <input class="field-input" placeholder="企业名称或个人姓名" data-field="buyerName" bindinput="handleInput" value="{{form.buyerName}}" />
+    </view>
+    <view class="field">
+      <view class="field-label">销售方</view>
+      <input class="field-input" placeholder="开票方名称" data-field="sellerName" bindinput="handleInput" value="{{form.sellerName}}" />
+    </view>
+    <view class="field">
+      <view class="field-label">发票代码</view>
+      <input class="field-input" placeholder="可选" data-field="invoiceCode" bindinput="handleInput" value="{{form.invoiceCode}}" />
+    </view>
+    <view class="field">
+      <view class="field-label">发票号码</view>
+      <input class="field-input" placeholder="可选" data-field="invoiceNumber" bindinput="handleInput" value="{{form.invoiceNumber}}" />
+    </view>
+    <view class="field">
+      <view class="field-label">费用分类</view>
+      <input class="field-input" placeholder="例如：信息服务、差旅、餐饮" data-field="category" bindinput="handleInput" value="{{form.category}}" />
+    </view>
+    <view class="field field-last">
+      <view class="field-label">备注</view>
+      <textarea class="field-textarea" placeholder="补充用途、报销人或特殊说明" data-field="remark" bindinput="handleInput">{{form.remark}}</textarea>
+    </view>
+  </view>
+
+  <view class="submit-bar">
+    <view class="submit-btn {{submitting ? 'submit-btn-disabled' : ''}}" bindtap="handleSubmit">
+      {{submitting ? '保存中...' : '保存到票夹'}}
+    </view>
+  </view>
+</view>

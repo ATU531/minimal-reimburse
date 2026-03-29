@@ -1,7 +1,12 @@
+const LOCAL_INVOICES_STORAGE_KEY = "localDraftInvoices";
+
 Page({
   data: {
     activeFilter: "all",
+    searchKeyword: "",
     selectedCount: 2,
+    loading: false,
+    allInvoices: [],
     filters: [
       { id: "all", label: "全部" },
       { id: "month", label: "本月" },
@@ -50,10 +55,199 @@ Page({
       },
     ],
   },
-  selectFilter(e) {
-    this.setData({
-      activeFilter: e.currentTarget.dataset.id,
+  onShow() {
+    this.fetchInvoices();
+  },
+  formatAmount(amountInCents) {
+    return `¥${(Number(amountInCents || 0) / 100).toFixed(2)}`;
+  },
+  buildSummaryCards(invoices) {
+    const pendingCount = invoices.filter(
+      (item) => item.verifyStatus !== "verified"
+    ).length;
+    const amountTotal = invoices.reduce(
+      (total, item) => total + Number(item.totalAmount || 0),
+      0
+    );
+    const exportableCount = invoices.filter(
+      (item) => item.exportStatus !== "exported"
+    ).length;
+    return [
+      { label: "待整理", value: String(pendingCount) },
+      { label: "本月金额", value: this.formatAmount(amountTotal) },
+      { label: "待导出", value: String(exportableCount) },
+    ];
+  },
+  normalizeInvoice(invoice) {
+    return {
+      id: invoice._id,
+      selected: false,
+      title: invoice.title,
+      type: invoice.invoiceTypeLabel,
+      amount: this.formatAmount(invoice.totalAmount || invoice.amount),
+      amountInCents: Number(invoice.totalAmount || invoice.amount || 0),
+      date: invoice.issueDate,
+      invoiceCode: invoice.invoiceCode || "",
+      invoiceNumber: invoice.invoiceNumber || "",
+      source: invoice.sourceLabel,
+      owner: invoice.buyerName || invoice.sellerName || "未命名抬头",
+      tags: invoice.tags || [],
+      verifyStatus: invoice.verifyStatus,
+      reimburseStatus: invoice.reimburseStatus,
+      printStatus: invoice.printStatus,
+      exportStatus: invoice.exportStatus,
+      createdAt: invoice.createdAt,
+      updatedAt: invoice.updatedAt,
+    };
+  },
+  normalizeLocalInvoice(invoice) {
+    return {
+      id: invoice._id,
+      selected: false,
+      title: invoice.title,
+      type: invoice.invoiceTypeLabel,
+      amount: this.formatAmount(invoice.totalAmount || invoice.amount),
+      totalAmount: Number(invoice.totalAmount || invoice.amount || 0),
+      amountInCents: Number(invoice.totalAmount || invoice.amount || 0),
+      date: invoice.issueDate,
+      invoiceCode: invoice.invoiceCode || "",
+      invoiceNumber: invoice.invoiceNumber || "",
+      source: invoice.sourceLabel,
+      owner: invoice.buyerName || invoice.sellerName || "未命名抬头",
+      tags: invoice.tags || [],
+      verifyStatus: invoice.verifyStatus || "unverified",
+      reimburseStatus: invoice.reimburseStatus || "unreimbursed",
+      printStatus: invoice.printStatus || "unprinted",
+      exportStatus: invoice.exportStatus || "none",
+      createdAt: invoice.createdAt,
+      updatedAt: invoice.updatedAt,
+    };
+  },
+  getLocalDraftInvoices() {
+    const localDrafts = wx.getStorageSync(LOCAL_INVOICES_STORAGE_KEY) || [];
+    return localDrafts.map((item) => this.normalizeLocalInvoice(item));
+  },
+  mergeInvoices(remoteInvoices, localInvoices) {
+    const mergedMap = {};
+    [...localInvoices, ...remoteInvoices].forEach((item) => {
+      mergedMap[item.id] = item;
     });
+    return Object.values(mergedMap).sort(
+      (left, right) => Number(right.createdAt || 0) - Number(left.createdAt || 0)
+    );
+  },
+  applyFilter(filterId, nextAllInvoices) {
+    const allInvoices = nextAllInvoices || this.data.allInvoices;
+    const keyword = String(this.data.searchKeyword || "").trim().toLowerCase();
+    let invoices = allInvoices;
+    if (filterId === "unreimbursed") {
+      invoices = allInvoices.filter(
+        (item) => item.reimburseStatus === "unreimbursed"
+      );
+    }
+    if (filterId === "ready") {
+      invoices = allInvoices.filter((item) => item.exportStatus !== "exported");
+    }
+    if (filterId === "printed") {
+      invoices = allInvoices.filter((item) => item.printStatus === "printed");
+    }
+    if (filterId === "month") {
+      invoices = allInvoices.filter((item) => String(item.date || "").startsWith("2026-03"));
+    }
+    if (keyword) {
+      invoices = invoices.filter((item) => {
+        const searchableText = [
+          item.title,
+          item.owner,
+          item.amount,
+          item.source,
+          item.invoiceCode,
+          item.invoiceNumber,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return searchableText.includes(keyword);
+      });
+    }
+    this.setData({
+      invoices,
+      selectedCount: invoices.filter((item) => item.selected).length,
+      summaryCards: this.buildSummaryCards(allInvoices),
+    });
+  },
+  fetchInvoices() {
+    this.setData({
+      loading: true,
+    });
+    wx.cloud
+      .callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "listInvoices",
+        },
+      })
+      .then((response) => {
+        const remoteInvoices = ((response.result && response.result.data) || []).map(
+          (item) => this.normalizeInvoice(item)
+        );
+        const mergedInvoices = this.mergeInvoices(
+          remoteInvoices,
+          this.getLocalDraftInvoices()
+        );
+        this.setData({
+          allInvoices: mergedInvoices,
+          loading: false,
+        });
+        this.applyFilter(this.data.activeFilter, mergedInvoices);
+      })
+      .catch(() => {
+        const fallbackInvoices = this.data.invoices.map((item) =>
+          Object.assign({}, item, {
+            totalAmount: Math.round(
+              Number(String(item.amount).replace(/[^\d.]/g, "")) * 100
+            ),
+            amountInCents: Math.round(
+              Number(String(item.amount).replace(/[^\d.]/g, "")) * 100
+            ),
+            verifyStatus: item.tags.includes("已核验") ? "verified" : "unverified",
+            reimburseStatus: item.tags.includes("已报销") ? "reimbursed" : "unreimbursed",
+            printStatus: item.tags.includes("已打印") ? "printed" : "unprinted",
+            exportStatus: item.tags.includes("已导出") ? "exported" : "none",
+          })
+        );
+        const mergedInvoices = this.mergeInvoices(
+          fallbackInvoices,
+          this.getLocalDraftInvoices()
+        );
+        this.setData({
+          allInvoices: mergedInvoices,
+          loading: false,
+        });
+        this.applyFilter(this.data.activeFilter, mergedInvoices);
+        wx.showToast({
+          title: "已展示本地票夹数据",
+          icon: "none",
+        });
+      });
+  },
+  handleSearchInput(e) {
+    this.setData({
+      searchKeyword: e.detail.value,
+    });
+    this.applyFilter(this.data.activeFilter);
+  },
+  clearSearch() {
+    this.setData({
+      searchKeyword: "",
+    });
+    this.applyFilter(this.data.activeFilter);
+  },
+  selectFilter(e) {
+    const activeFilter = e.currentTarget.dataset.id;
+    this.setData({
+      activeFilter,
+    });
+    this.applyFilter(activeFilter);
   },
   toggleInvoice(e) {
     const currentId = e.currentTarget.dataset.id;

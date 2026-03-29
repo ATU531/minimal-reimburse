@@ -36,6 +36,8 @@ Page({
         title: "手动录入",
         subtitle: "手工填写发票核心字段并保存为票夹记录",
         guide: "适合识别失败、特殊票据或仅做示意录入的情况。",
+        actionLabel: "填写发票",
+        actionPage: "/pages/manual-entry/index",
       },
       more: {
         title: "更多录入方式",
@@ -62,8 +64,15 @@ Page({
     });
   },
   handleTap(e) {
+    const { page, label } = e.currentTarget.dataset;
+    if (page) {
+      wx.navigateTo({
+        url: page,
+      });
+      return;
+    }
     wx.showToast({
-      title: e.currentTarget.dataset.label,
+      title: label,
       icon: "none",
     });
   },
