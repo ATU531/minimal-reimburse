@@ -3,6 +3,11 @@ const LOCAL_INVOICES_STORAGE_KEY = "localDraftInvoices";
 Page({
   data: {
     submitting: false,
+    pageTitle: "手动录入发票",
+    pageDesc: "先完成最小录入闭环：填写核心字段，提交后直接进入票夹。",
+    mode: "create",
+    editingInvoiceId: "",
+    isLocalEdit: false,
     invoiceTypeOptions: [
       { label: "电子普票", value: "vat_common_electronic" },
       { label: "电子专票", value: "vat_special_electronic" },
@@ -27,8 +32,26 @@ Page({
       invoiceType: "vat_common_electronic",
       sourceType: "manual",
     },
+    errors: {
+      title: "",
+      amount: "",
+      issueDate: "",
+    },
     invoiceTypeIndex: 0,
     sourceIndex: 0,
+  },
+  onLoad(options) {
+    const invoiceId = options.id || "";
+    if (!invoiceId) {
+      return;
+    }
+    this.setData({
+      mode: "edit",
+      editingInvoiceId: invoiceId,
+      pageTitle: "编辑发票",
+      pageDesc: "修改发票核心字段，保存后回到详情页。",
+    });
+    this.loadInvoiceForEdit(invoiceId);
   },
   getInvoiceTypeLabel(invoiceType) {
     const matchedOption = this.data.invoiceTypeOptions.find(
@@ -83,14 +106,109 @@ Page({
     ]);
     return draftInvoice;
   },
+  updateLocalDraftInvoice(invoiceId, form) {
+    const existingDrafts = this.getLocalDrafts();
+    const updatedDrafts = existingDrafts.map((item) => {
+      if (item._id !== invoiceId) {
+        return item;
+      }
+      return Object.assign({}, item, {
+        title: form.title.trim(),
+        totalAmount: Math.round(Number(form.amount) * 100),
+        amount: Math.round(Number(form.amount) * 100),
+        issueDate: form.issueDate,
+        invoiceType: form.invoiceType,
+        invoiceTypeLabel: this.getInvoiceTypeLabel(form.invoiceType),
+        invoiceCode: form.invoiceCode.trim(),
+        invoiceNumber: form.invoiceNumber.trim(),
+        buyerName: form.buyerName.trim(),
+        sellerName: form.sellerName.trim(),
+        sourceType: form.sourceType,
+        sourceLabel: this.getSourceLabel(form.sourceType),
+        category: form.category.trim(),
+        remark: form.remark.trim(),
+        updatedAt: Date.now(),
+      });
+    });
+    wx.setStorageSync(LOCAL_INVOICES_STORAGE_KEY, updatedDrafts);
+    return updatedDrafts.find((item) => item._id === invoiceId);
+  },
   getLocalDrafts() {
     return wx.getStorageSync(LOCAL_INVOICES_STORAGE_KEY) || [];
+  },
+  fillForm(invoice) {
+    const invoiceTypeIndex = this.data.invoiceTypeOptions.findIndex(
+      (item) => item.value === (invoice.invoiceType || "vat_common_electronic")
+    );
+    const sourceIndex = this.data.sourceOptions.findIndex(
+      (item) => item.value === (invoice.sourceType || "manual")
+    );
+    this.setData({
+      form: {
+        title: invoice.title || "",
+        amount: String(
+          Number(invoice.totalAmount || invoice.amount || 0) / 100
+        ),
+        issueDate: invoice.issueDate || "",
+        buyerName: invoice.buyerName || "",
+        sellerName: invoice.sellerName || "",
+        invoiceCode: invoice.invoiceCode || "",
+        invoiceNumber: invoice.invoiceNumber || "",
+        category: invoice.category || "",
+        remark: invoice.remark || "",
+        invoiceType: invoice.invoiceType || "vat_common_electronic",
+        sourceType: invoice.sourceType || "manual",
+      },
+      invoiceTypeIndex: invoiceTypeIndex >= 0 ? invoiceTypeIndex : 0,
+      sourceIndex: sourceIndex >= 0 ? sourceIndex : 0,
+    });
+  },
+  loadInvoiceForEdit(invoiceId) {
+    const localDraft = this.getLocalDrafts().find((item) => item._id === invoiceId);
+    if (localDraft) {
+      this.setData({
+        isLocalEdit: true,
+      });
+      this.fillForm(localDraft);
+      return;
+    }
+    wx.showLoading({
+      title: "加载中",
+      mask: true,
+    });
+    wx.cloud
+      .callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "getInvoiceDetail",
+          id: invoiceId,
+        },
+      })
+      .then((response) => {
+        const invoice = response.result && response.result.data;
+        if (!invoice) {
+          throw new Error("invoice detail is empty");
+        }
+        this.fillForm(invoice);
+      })
+      .catch(() => {
+        wx.showToast({
+          title: "加载失败",
+          icon: "none",
+        });
+      })
+      .finally(() => {
+        wx.hideLoading();
+      });
   },
   findDuplicateLocalDraft(form) {
     const invoiceCode = String(form.invoiceCode || "").trim();
     const invoiceNumber = String(form.invoiceNumber || "").trim();
     const totalAmount = Math.round(Number(form.amount) * 100);
     return this.getLocalDrafts().find((item) => {
+      if (this.data.mode === "edit" && item._id === this.data.editingInvoiceId) {
+        return false;
+      }
       if (
         invoiceCode &&
         invoiceNumber &&
@@ -133,14 +251,21 @@ Page({
     const nextForm = Object.assign({}, this.data.form, {
       [field]: e.detail.value,
     });
+    const nextErrors = Object.assign({}, this.data.errors, {
+      [field]: "",
+    });
     this.setData({
       form: nextForm,
+      errors: nextErrors,
     });
   },
   handleDateChange(e) {
     this.setData({
       form: Object.assign({}, this.data.form, {
         issueDate: e.detail.value,
+      }),
+      errors: Object.assign({}, this.data.errors, {
+        issueDate: "",
       }),
     });
   },
@@ -164,23 +289,33 @@ Page({
   },
   validateForm() {
     const { title, amount, issueDate } = this.data.form;
+    const errors = {
+      title: "",
+      amount: "",
+      issueDate: "",
+    };
     if (!title.trim()) {
-      return "请填写发票标题";
+      errors.title = "请填写发票标题";
     }
     if (!amount || Number(amount) <= 0) {
-      return "请填写正确金额";
+      errors.amount = "请填写正确金额";
     }
     if (!issueDate) {
-      return "请选择开票日期";
+      errors.issueDate = "请选择开票日期";
     }
-    return "";
+    return errors;
   },
   handleSubmit() {
     if (this.data.submitting) {
       return;
     }
-    const validationMessage = this.validateForm();
+    const errors = this.validateForm();
+    const validationMessage =
+      errors.title || errors.amount || errors.issueDate || "";
     if (validationMessage) {
+      this.setData({
+        errors,
+      });
       wx.showToast({
         title: validationMessage,
         icon: "none",
@@ -222,11 +357,24 @@ Page({
       invoiceType: form.invoiceType,
       sourceType: form.sourceType,
     };
+    if (this.data.mode === "edit" && this.data.isLocalEdit) {
+      const updatedLocalDraft = this.updateLocalDraftInvoice(
+        this.data.editingInvoiceId,
+        form
+      );
+      this.finishSubmit({
+        message: "已更新本地发票",
+        icon: "success",
+        invoiceId: updatedLocalDraft && updatedLocalDraft._id,
+      });
+      return;
+    }
     Promise.race([
       wx.cloud.callFunction({
         name: "quickstartFunctions",
         data: {
-          type: "createInvoice",
+          type: this.data.mode === "edit" ? "updateInvoice" : "createInvoice",
+          id: this.data.editingInvoiceId || undefined,
           data: requestPayload,
         },
       }),
@@ -251,9 +399,9 @@ Page({
           throw new Error((result && result.errMsg) || "save invoice failed");
         }
         this.finishSubmit({
-          message: "已保存到票夹",
+          message: this.data.mode === "edit" ? "已更新发票" : "已保存到票夹",
           icon: "success",
-          invoiceId: result.data._id,
+          invoiceId: (result.data && result.data._id) || this.data.editingInvoiceId,
         });
       })
       .catch((error) => {

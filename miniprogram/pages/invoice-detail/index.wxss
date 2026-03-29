@@ -125,6 +125,37 @@ page {
   color: #667085;
 }
 
+.action-list {
+  margin-top: 18rpx;
+}
+
+.action-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 18rpx;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f2f4f7;
+}
+
+.action-item:last-child {
+  border-bottom: none;
+}
+
+.action-label {
+  font-size: 26rpx;
+  color: #101828;
+}
+
+.action-value {
+  font-size: 22rpx;
+  color: #667085;
+}
+
+.action-item-danger .action-label,
+.action-item-danger .action-value {
+  color: #d92d20;
+}
+
 .bottom-actions {
   position: fixed;
   left: 24rpx;

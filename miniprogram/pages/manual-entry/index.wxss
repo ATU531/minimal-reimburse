@@ -76,6 +76,16 @@ page {
   min-height: 160rpx;
 }
 
+.field-input-error {
+  color: #d92d20;
+}
+
+.field-error {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #d92d20;
+}
+
 .submit-bar {
   position: fixed;
   left: 24rpx;

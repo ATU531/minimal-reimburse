@@ -33,6 +33,20 @@
     </view>
   </view>
 
+  <view class="section-card">
+    <view class="section-title">发票操作</view>
+    <view class="action-list">
+      <view class="action-item" bindtap="handleEdit">
+        <view class="action-label">编辑发票</view>
+        <view class="action-value">修改字段</view>
+      </view>
+      <view class="action-item action-item-danger" bindtap="handleDelete">
+        <view class="action-label">删除发票</view>
+        <view class="action-value">从票夹移除</view>
+      </view>
+    </view>
+  </view>
+
   <view class="bottom-actions">
     <view class="secondary-btn" data-label="导出 PDF" data-page="/pages/export-center/index?type=pdf" bindtap="handleTap">导出 PDF</view>
     <view class="secondary-btn" data-label="导出 Excel" data-page="/pages/export-center/index?type=excel" bindtap="handleTap">导出 Excel</view>

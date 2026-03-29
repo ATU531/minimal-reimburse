@@ -103,6 +103,10 @@ const normalizeComparableText = (value) => {
   return String(value || "").trim();
 };
 
+const formatSearchableAmount = (amountInCents) => {
+  return (Number(amountInCents || 0) / 100).toFixed(2);
+};
+
 const buildInvoiceTimeline = (invoice) => {
   return [
     {
@@ -127,6 +131,45 @@ const buildInvoiceTimeline = (invoice) => {
           : "当前状态",
     },
   ];
+};
+
+const matchInvoiceSearchKeyword = (invoice, searchKeyword) => {
+  const keyword = normalizeComparableText(searchKeyword).toLowerCase();
+  if (!keyword) {
+    return true;
+  }
+  const searchableText = [
+    invoice.title,
+    invoice.buyerName,
+    invoice.sellerName,
+    invoice.invoiceCode,
+    invoice.invoiceNumber,
+    getSourceLabel(invoice.sourceType),
+    getInvoiceTypeLabel(invoice.invoiceType),
+    formatSearchableAmount(invoice.totalAmount || invoice.amount),
+  ]
+    .join(" ")
+    .toLowerCase();
+  return searchableText.includes(keyword);
+};
+
+const matchInvoiceActiveFilter = (invoice, activeFilter) => {
+  if (!activeFilter || activeFilter === "all") {
+    return true;
+  }
+  if (activeFilter === "unreimbursed") {
+    return invoice.reimburseStatus === "unreimbursed";
+  }
+  if (activeFilter === "ready") {
+    return invoice.exportStatus !== "exported";
+  }
+  if (activeFilter === "printed") {
+    return invoice.printStatus === "printed";
+  }
+  if (activeFilter === "month") {
+    return String(invoice.issueDate || "").startsWith("2026-03");
+  }
+  return true;
 };
 
 const buildSampleInvoices = (openid) => {
@@ -289,8 +332,10 @@ const createInvoiceCollection = async () => {
   };
 };
 
-const listInvoices = async () => {
+const listInvoices = async (event) => {
   const result = await ensureInvoiceSeedData();
+  const activeFilter = event.activeFilter || (event.data && event.data.activeFilter);
+  const searchKeyword = event.searchKeyword || (event.data && event.data.searchKeyword);
   const records = await db
     .collection(INVOICES_COLLECTION)
     .where({
@@ -299,9 +344,14 @@ const listInvoices = async () => {
     })
     .orderBy("issueDate", "desc")
     .get();
+  const filteredInvoices = records.data.filter(
+    (invoice) =>
+      matchInvoiceActiveFilter(invoice, activeFilter) &&
+      matchInvoiceSearchKeyword(invoice, searchKeyword)
+  );
   return {
     success: true,
-    data: records.data.map((invoice) => ({
+    data: filteredInvoices.map((invoice) => ({
       _id: invoice._id,
       title: invoice.title,
       amount: invoice.amount,
@@ -326,7 +376,7 @@ const listInvoices = async () => {
   };
 };
 
-const findDuplicateInvoice = async (openid, payload) => {
+const findDuplicateInvoice = async (openid, payload, excludeId) => {
   const invoiceCode = normalizeComparableText(payload.invoiceCode);
   const invoiceNumber = normalizeComparableText(payload.invoiceNumber);
   if (invoiceCode && invoiceNumber) {
@@ -340,8 +390,11 @@ const findDuplicateInvoice = async (openid, payload) => {
       })
       .limit(1)
       .get();
-    if (duplicatedByCode.data.length) {
-      return duplicatedByCode.data[0];
+    const matchedByCode = duplicatedByCode.data.find(
+      (item) => !excludeId || item._id !== excludeId
+    );
+    if (matchedByCode) {
+      return matchedByCode;
     }
   }
   const title = normalizeComparableText(payload.title);
@@ -363,7 +416,10 @@ const findDuplicateInvoice = async (openid, payload) => {
     })
     .limit(1)
     .get();
-  return duplicatedByFingerprint.data.length ? duplicatedByFingerprint.data[0] : null;
+  const matchedByFingerprint = duplicatedByFingerprint.data.find(
+    (item) => !excludeId || item._id !== excludeId
+  );
+  return matchedByFingerprint || null;
 };
 
 const getInvoiceDetail = async (event) => {
@@ -407,6 +463,8 @@ const getInvoiceDetail = async (event) => {
       buyerTaxNo: invoice.buyerTaxNo,
       sellerName: invoice.sellerName,
       sellerTaxNo: invoice.sellerTaxNo,
+      category: invoice.category,
+      remark: invoice.remark,
       sourceType: invoice.sourceType,
       sourceLabel: getSourceLabel(invoice.sourceType),
       verifyStatus: invoice.verifyStatus,
@@ -480,6 +538,174 @@ const createInvoice = async (event) => {
       _id: addResult._id,
       duplicated: false,
     },
+  };
+};
+
+const updateInvoice = async (event) => {
+  const result = await ensureInvoiceSeedData();
+  const invoiceId = event.id || (event.data && event.data.id);
+  const payload = (event && event.data) || {};
+  if (!invoiceId) {
+    return {
+      success: false,
+      errMsg: "invoice id is required",
+    };
+  }
+  const duplicateInvoice = await findDuplicateInvoice(result.openid, payload, invoiceId);
+  if (duplicateInvoice) {
+    return {
+      success: false,
+      errCode: "DUPLICATE_INVOICE",
+      errMsg: "invoice already exists",
+      data: {
+        _id: duplicateInvoice._id,
+        title: duplicateInvoice.title,
+      },
+    };
+  }
+  const updatedAt = Date.now();
+  await db
+    .collection(INVOICES_COLLECTION)
+    .where({
+      _id: invoiceId,
+      openid: result.openid,
+      deletedAt: null,
+    })
+    .update({
+      data: {
+        title: payload.title || "未命名发票",
+        amount: normalizeInvoiceAmount(payload.amount),
+        totalAmount: normalizeInvoiceAmount(payload.totalAmount || payload.amount),
+        issueDate: payload.issueDate || "",
+        buyerName: payload.buyerName || "",
+        sellerName: payload.sellerName || "",
+        invoiceCode: payload.invoiceCode || "",
+        invoiceNumber: payload.invoiceNumber || "",
+        category: payload.category || "",
+        remark: payload.remark || "",
+        invoiceType: payload.invoiceType || "vat_common_electronic",
+        sourceType: payload.sourceType || "manual",
+        updatedAt,
+      },
+    });
+  return {
+    success: true,
+    data: {
+      _id: invoiceId,
+      updated: true,
+    },
+  };
+};
+
+const deleteInvoice = async (event) => {
+  const result = await ensureInvoiceSeedData();
+  const invoiceId = event.id || (event.data && event.data.id);
+  if (!invoiceId) {
+    return {
+      success: false,
+      errMsg: "invoice id is required",
+    };
+  }
+  await db
+    .collection(INVOICES_COLLECTION)
+    .where({
+      _id: invoiceId,
+      openid: result.openid,
+      deletedAt: null,
+    })
+    .update({
+      data: {
+        deletedAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    });
+  return {
+    success: true,
+    data: {
+      _id: invoiceId,
+      deleted: true,
+    },
+  };
+};
+
+const syncLocalInvoices = async (event) => {
+  const result = await ensureInvoiceSeedData();
+  const invoices = (event && event.data && event.data.invoices) || [];
+  const synced = [];
+  for (let i = 0; i < invoices.length; i++) {
+    const localInvoice = invoices[i];
+    const payload = {
+      title: localInvoice.title,
+      amount: localInvoice.amount,
+      totalAmount: localInvoice.totalAmount || localInvoice.amount,
+      issueDate: localInvoice.issueDate,
+      buyerName: localInvoice.buyerName,
+      sellerName: localInvoice.sellerName,
+      invoiceCode: localInvoice.invoiceCode,
+      invoiceNumber: localInvoice.invoiceNumber,
+      category: localInvoice.category,
+      remark: localInvoice.remark,
+      invoiceType: localInvoice.invoiceType,
+      sourceType: localInvoice.sourceType,
+    };
+    const duplicateInvoice = await findDuplicateInvoice(result.openid, payload);
+    if (duplicateInvoice) {
+      synced.push({
+        localId: localInvoice._id,
+        remoteId: duplicateInvoice._id,
+        status: "duplicate",
+      });
+      continue;
+    }
+    const now = Date.now();
+    const invoiceData = {
+      openid: result.openid,
+      tenantId: "default",
+      invoiceCode: payload.invoiceCode || "",
+      invoiceNumber: payload.invoiceNumber || "",
+      invoiceType: payload.invoiceType || "vat_common_electronic",
+      invoiceMedium: "electronic",
+      title: payload.title || "未命名发票",
+      amount: normalizeInvoiceAmount(payload.amount),
+      taxAmount: 0,
+      totalAmount: normalizeInvoiceAmount(payload.totalAmount || payload.amount),
+      issueDate: payload.issueDate || "",
+      buyerName: payload.buyerName || "",
+      buyerTaxNo: "",
+      sellerName: payload.sellerName || "",
+      sellerTaxNo: "",
+      category: payload.category || "",
+      sourceType: payload.sourceType || "manual",
+      sourceMeta: {
+        localDraftId: localInvoice._id,
+      },
+      ocrStatus: "skipped",
+      verifyStatus: "unverified",
+      reimburseStatus: "unreimbursed",
+      printStatus: "unprinted",
+      exportStatus: "none",
+      archived: false,
+      remark: payload.remark || "",
+      attachments: [],
+      recognizedFields: {},
+      manualOverrides: {},
+      linkedReimbursementId: "",
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+    const addResult = await db.collection(INVOICES_COLLECTION).add({
+      data: invoiceData,
+    });
+    synced.push({
+      localId: localInvoice._id,
+      remoteId: addResult._id,
+      status: "created",
+    });
+  }
+  return {
+    success: true,
+    data: synced,
   };
 };
 // 获取openid
@@ -662,10 +888,16 @@ exports.main = async (event, context) => {
     case "createInvoiceCollection":
       return await createInvoiceCollection();
     case "listInvoices":
-      return await listInvoices();
+      return await listInvoices(event);
     case "getInvoiceDetail":
       return await getInvoiceDetail(event);
     case "createInvoice":
       return await createInvoice(event);
+    case "updateInvoice":
+      return await updateInvoice(event);
+    case "deleteInvoice":
+      return await deleteInvoice(event);
+    case "syncLocalInvoices":
+      return await syncLocalInvoices(event);
   }
 };

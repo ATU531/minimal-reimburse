@@ -67,6 +67,98 @@ page {
   color: #ffffff;
 }
 
+.filter-panel-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.28);
+  z-index: 20;
+}
+
+.filter-panel {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  top: 180rpx;
+  padding: 28rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 24rpx 50rpx rgba(16, 24, 40, 0.12);
+  z-index: 21;
+}
+
+.filter-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.filter-panel-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #101828;
+}
+
+.filter-panel-close {
+  font-size: 24rpx;
+  color: #667085;
+}
+
+.filter-panel-section {
+  margin-top: 24rpx;
+}
+
+.filter-panel-subtitle {
+  font-size: 24rpx;
+  color: #667085;
+}
+
+.filter-panel-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.filter-panel-option {
+  padding: 16rpx 24rpx;
+  border-radius: 999rpx;
+  background: #f7f8fa;
+  color: #475467;
+  font-size: 24rpx;
+}
+
+.filter-panel-option-active {
+  background: #101828;
+  color: #ffffff;
+}
+
+.filter-panel-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 28rpx;
+}
+
+.filter-panel-reset,
+.filter-panel-confirm {
+  flex: 1;
+  height: 84rpx;
+  border-radius: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+}
+
+.filter-panel-reset {
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.filter-panel-confirm {
+  background: linear-gradient(135deg, #4f6ef7 0%, #7c96ff 100%);
+  color: #ffffff;
+}
+
 .summary-row {
   display: flex;
   gap: 16rpx;

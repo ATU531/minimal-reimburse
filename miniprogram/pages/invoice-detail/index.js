@@ -4,6 +4,8 @@ Page({
   data: {
     invoiceId: "",
     loading: false,
+    isLocalDraft: false,
+    rawInvoice: null,
     invoice: {
       title: "信息服务 · 软件订阅",
       amount: "¥3,980.00",
@@ -37,6 +39,7 @@ Page({
   applyInvoiceDetail(invoice, timeline) {
     this.setData({
       loading: false,
+      rawInvoice: invoice,
       invoice: {
         title: invoice.title,
         amount: this.formatAmount(invoice.totalAmount || invoice.amount),
@@ -59,11 +62,15 @@ Page({
   fetchInvoiceDetail(invoiceId) {
     const localDraft = this.findLocalDraft(invoiceId);
     if (localDraft) {
+      this.setData({
+        isLocalDraft: true,
+      });
       this.applyInvoiceDetail(localDraft, localDraft.timeline);
       return;
     }
     this.setData({
       loading: true,
+      isLocalDraft: false,
     });
     wx.cloud
       .callFunction({
@@ -89,6 +96,76 @@ Page({
           icon: "none",
         });
       });
+  },
+  handleEdit() {
+    wx.navigateTo({
+      url: `/pages/manual-entry/index?id=${this.data.invoiceId}`,
+    });
+  },
+  deleteLocalDraft() {
+    const localDrafts = wx.getStorageSync(LOCAL_INVOICES_STORAGE_KEY) || [];
+    wx.setStorageSync(
+      LOCAL_INVOICES_STORAGE_KEY,
+      localDrafts.filter((item) => item._id !== this.data.invoiceId)
+    );
+    wx.showToast({
+      title: "已删除本地发票",
+      icon: "success",
+    });
+    setTimeout(() => {
+      wx.switchTab({
+        url: "/pages/folder/index",
+      });
+    }, 500);
+  },
+  deleteRemoteInvoice() {
+    wx.showLoading({
+      title: "删除中",
+      mask: true,
+    });
+    wx.cloud
+      .callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "deleteInvoice",
+          id: this.data.invoiceId,
+        },
+      })
+      .then(() => {
+        wx.hideLoading();
+        wx.showToast({
+          title: "已删除发票",
+          icon: "success",
+        });
+        setTimeout(() => {
+          wx.switchTab({
+            url: "/pages/folder/index",
+          });
+        }, 500);
+      })
+      .catch(() => {
+        wx.hideLoading();
+        wx.showToast({
+          title: "删除失败",
+          icon: "none",
+        });
+      });
+  },
+  handleDelete() {
+    wx.showModal({
+      title: "删除发票",
+      content: "删除后会从票夹中移除该发票，是否继续？",
+      success: (result) => {
+        if (!result.confirm) {
+          return;
+        }
+        if (this.data.isLocalDraft) {
+          this.deleteLocalDraft();
+          return;
+        }
+        this.deleteRemoteInvoice();
+      },
+    });
   },
   handleTap(e) {
     const { page, label } = e.currentTarget.dataset;

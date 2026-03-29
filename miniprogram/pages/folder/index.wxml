@@ -2,7 +2,7 @@
   <view class="search-card">
     <view class="search-row">
       <input class="search-box" placeholder="搜索发票名称、抬头、金额、代码、号码" value="{{searchKeyword}}" bindinput="handleSearchInput" />
-      <view class="filter-trigger" bindtap="clearSearch">{{searchKeyword ? '清空' : '筛选'}}</view>
+      <view class="filter-trigger" bindtap="toggleFilterPanel">筛选</view>
     </view>
     <scroll-view scroll-x class="filter-scroll" enable-flex="true">
       <view class="filter-list">
@@ -18,6 +18,33 @@
         </view>
       </view>
     </scroll-view>
+  </view>
+
+  <view class="filter-panel-mask" wx:if="{{showFilterPanel}}" bindtap="closeFilterPanel"></view>
+  <view class="filter-panel" wx:if="{{showFilterPanel}}">
+    <view class="filter-panel-header">
+      <view class="filter-panel-title">票夹筛选</view>
+      <view class="filter-panel-close" bindtap="closeFilterPanel">关闭</view>
+    </view>
+    <view class="filter-panel-section">
+      <view class="filter-panel-subtitle">状态筛选</view>
+      <view class="filter-panel-options">
+        <view
+          class="filter-panel-option {{activeFilter === item.id ? 'filter-panel-option-active' : ''}}"
+          wx:for="{{filters}}"
+          wx:key="id"
+          wx:for-item="item"
+          data-id="{{item.id}}"
+          bindtap="applyPanelFilter"
+        >
+          {{item.label}}
+        </view>
+      </view>
+    </view>
+    <view class="filter-panel-actions">
+      <view class="filter-panel-reset" bindtap="resetAllFilters">重置条件</view>
+      <view class="filter-panel-confirm" bindtap="closeFilterPanel">完成</view>
+    </view>
   </view>
 
   <view class="summary-row">

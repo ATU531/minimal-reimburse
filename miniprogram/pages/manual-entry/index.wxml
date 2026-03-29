@@ -1,24 +1,27 @@
 <view class="page">
   <view class="hero-card">
-    <view class="hero-title">手动录入发票</view>
-    <view class="hero-desc">先完成最小录入闭环：填写核心字段，提交后直接进入票夹。</view>
+    <view class="hero-title">{{pageTitle}}</view>
+    <view class="hero-desc">{{pageDesc}}</view>
   </view>
 
   <view class="form-card">
     <view class="section-title">核心字段</view>
     <view class="field">
       <view class="field-label">发票标题</view>
-      <input class="field-input" placeholder="例如：信息服务 · 软件订阅" data-field="title" bindinput="handleInput" value="{{form.title}}" />
+      <input class="field-input {{errors.title ? 'field-input-error' : ''}}" placeholder="例如：信息服务 · 软件订阅" data-field="title" bindinput="handleInput" value="{{form.title}}" />
+      <view class="field-error" wx:if="{{errors.title}}">{{errors.title}}</view>
     </view>
     <view class="field">
       <view class="field-label">发票金额</view>
-      <input class="field-input" type="digit" placeholder="例如：3980.00" data-field="amount" bindinput="handleInput" value="{{form.amount}}" />
+      <input class="field-input {{errors.amount ? 'field-input-error' : ''}}" type="digit" placeholder="例如：3980.00" data-field="amount" bindinput="handleInput" value="{{form.amount}}" />
+      <view class="field-error" wx:if="{{errors.amount}}">{{errors.amount}}</view>
     </view>
     <view class="field">
       <view class="field-label">开票日期</view>
       <picker mode="date" value="{{form.issueDate}}" bindchange="handleDateChange">
-        <view class="picker-value">{{form.issueDate}}</view>
+        <view class="picker-value {{errors.issueDate ? 'field-input-error' : ''}}">{{form.issueDate}}</view>
       </picker>
+      <view class="field-error" wx:if="{{errors.issueDate}}">{{errors.issueDate}}</view>
     </view>
     <view class="field">
       <view class="field-label">发票类型</view>
@@ -64,7 +67,7 @@
 
   <view class="submit-bar">
     <view class="submit-btn {{submitting ? 'submit-btn-disabled' : ''}}" bindtap="handleSubmit">
-      {{submitting ? '保存中...' : '保存到票夹'}}
+      {{submitting ? '保存中...' : (mode === 'edit' ? '更新发票' : '保存到票夹')}}
     </view>
   </view>
 </view>

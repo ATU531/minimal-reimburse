@@ -3,9 +3,11 @@ const LOCAL_INVOICES_STORAGE_KEY = "localDraftInvoices";
 Page({
   data: {
     activeFilter: "all",
+    showFilterPanel: false,
     searchKeyword: "",
     selectedCount: 2,
     loading: false,
+    syncingLocalDrafts: false,
     allInvoices: [],
     filters: [
       { id: "all", label: "全部" },
@@ -56,7 +58,9 @@ Page({
     ],
   },
   onShow() {
-    this.fetchInvoices();
+    this.syncLocalDrafts().finally(() => {
+      this.fetchInvoices();
+    });
   },
   formatAmount(amountInCents) {
     return `¥${(Number(amountInCents || 0) / 100).toFixed(2)}`;
@@ -136,6 +140,45 @@ Page({
       (left, right) => Number(right.createdAt || 0) - Number(left.createdAt || 0)
     );
   },
+  syncLocalDrafts() {
+    const localDrafts = wx.getStorageSync(LOCAL_INVOICES_STORAGE_KEY) || [];
+    if (!localDrafts.length) {
+      return Promise.resolve();
+    }
+    this.setData({
+      syncingLocalDrafts: true,
+    });
+    return wx.cloud
+      .callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "syncLocalInvoices",
+          data: {
+            invoices: localDrafts,
+          },
+        },
+      })
+      .then((response) => {
+        const syncedItems = (response.result && response.result.data) || [];
+        if (!syncedItems.length) {
+          return;
+        }
+        const syncedIdMap = {};
+        syncedItems.forEach((item) => {
+          syncedIdMap[item.localId] = true;
+        });
+        const remainingDrafts = localDrafts.filter(
+          (item) => !syncedIdMap[item._id]
+        );
+        wx.setStorageSync(LOCAL_INVOICES_STORAGE_KEY, remainingDrafts);
+      })
+      .catch(() => {})
+      .finally(() => {
+        this.setData({
+          syncingLocalDrafts: false,
+        });
+      });
+  },
   applyFilter(filterId, nextAllInvoices) {
     const allInvoices = nextAllInvoices || this.data.allInvoices;
     const keyword = String(this.data.searchKeyword || "").trim().toLowerCase();
@@ -184,6 +227,8 @@ Page({
         name: "quickstartFunctions",
         data: {
           type: "listInvoices",
+          activeFilter: this.data.activeFilter,
+          searchKeyword: this.data.searchKeyword,
         },
       })
       .then((response) => {
@@ -234,20 +279,46 @@ Page({
     this.setData({
       searchKeyword: e.detail.value,
     });
-    this.applyFilter(this.data.activeFilter);
+    this.fetchInvoices();
   },
   clearSearch() {
     this.setData({
       searchKeyword: "",
     });
-    this.applyFilter(this.data.activeFilter);
+    this.fetchInvoices();
+  },
+  toggleFilterPanel() {
+    this.setData({
+      showFilterPanel: !this.data.showFilterPanel,
+    });
+  },
+  closeFilterPanel() {
+    this.setData({
+      showFilterPanel: false,
+    });
+  },
+  applyPanelFilter(e) {
+    const activeFilter = e.currentTarget.dataset.id;
+    this.setData({
+      activeFilter,
+      showFilterPanel: false,
+    });
+    this.fetchInvoices();
+  },
+  resetAllFilters() {
+    this.setData({
+      activeFilter: "all",
+      searchKeyword: "",
+      showFilterPanel: false,
+    });
+    this.fetchInvoices();
   },
   selectFilter(e) {
     const activeFilter = e.currentTarget.dataset.id;
     this.setData({
       activeFilter,
     });
-    this.applyFilter(activeFilter);
+    this.fetchInvoices();
   },
   toggleInvoice(e) {
     const currentId = e.currentTarget.dataset.id;
