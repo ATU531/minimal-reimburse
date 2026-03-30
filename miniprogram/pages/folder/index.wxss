@@ -165,6 +165,34 @@ page {
   margin-top: 24rpx;
 }
 
+.pending-banner {
+  margin-top: 20rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 24rpx;
+  background: #eef2ff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.pending-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #344054;
+}
+
+.pending-desc {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #667085;
+}
+
+.pending-link {
+  font-size: 22rpx;
+  color: #4f46e5;
+}
+
 .summary-card {
   flex: 1;
   padding: 24rpx;

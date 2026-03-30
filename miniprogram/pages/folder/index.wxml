@@ -47,6 +47,14 @@
     </view>
   </view>
 
+  <view class="pending-banner" wx:if="{{pendingReimbursementTarget}}">
+    <view>
+      <view class="pending-title">正在为草稿追加发票</view>
+      <view class="pending-desc">{{pendingReimbursementTarget.title}}</view>
+    </view>
+    <view class="pending-link" bindtap="clearPendingReimbursementTarget">取消</view>
+  </view>
+
   <view class="summary-row">
     <view class="summary-card" wx:for="{{summaryCards}}" wx:key="label" wx:for-item="item">
       <view class="summary-label">{{item.label}}</view>

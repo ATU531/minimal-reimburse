@@ -133,6 +133,18 @@ page {
   color: #101828;
 }
 
+.invoice-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10rpx;
+}
+
+.invoice-remove {
+  font-size: 22rpx;
+  color: #d92d20;
+}
+
 .timeline {
   display: flex;
   flex-direction: column;

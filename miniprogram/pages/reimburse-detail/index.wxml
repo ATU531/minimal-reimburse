@@ -53,7 +53,7 @@
   <view class="section-card">
     <view class="section-head">
       <view class="section-title">关联发票</view>
-      <view class="section-link" data-page="/pages/folder/index" bindtap="handleTap">去票夹挑选</view>
+      <view class="section-link" data-page="/pages/folder/index" bindtap="handleTap">{{currentView.status === '草稿' ? '继续追加' : '去票夹查看'}}</view>
     </view>
     <view class="invoice-list">
       <view class="invoice-item" wx:for="{{invoices}}" wx:key="title" wx:for-item="item">
@@ -61,7 +61,10 @@
           <view class="invoice-title">{{item.title}}</view>
           <view class="invoice-status">{{item.status}}</view>
         </view>
-        <view class="invoice-amount">{{item.amount}}</view>
+        <view class="invoice-item-right">
+          <view class="invoice-amount">{{item.amount}}</view>
+          <view class="invoice-remove" wx:if="{{currentView.status === '草稿'}}" data-id="{{item.id}}" bindtap="removeInvoice">移除</view>
+        </view>
       </view>
     </view>
   </view>

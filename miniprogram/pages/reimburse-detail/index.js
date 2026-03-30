@@ -1,3 +1,5 @@
+const PENDING_REIMBURSEMENT_STORAGE_KEY = "pendingReimbursementTarget";
+
 Page({
   data: {
     reimbursementId: "",
@@ -105,6 +107,7 @@ Page({
             { label: "发票数量", value: `${detail.invoiceCount} 张` },
           ],
           invoices: (detail.invoices || []).map((item) => ({
+            id: item.invoiceId,
             title: item.title,
             amount: this.formatAmount(item.amount),
             status: "报销中",
@@ -256,9 +259,75 @@ Page({
       },
     });
   },
+  startAddFromFolder() {
+    if (!this.data.reimbursementId) {
+      return;
+    }
+    if (this.data.currentView.status !== "草稿") {
+      wx.showToast({
+        title: "仅草稿支持继续追加发票",
+        icon: "none",
+      });
+      return;
+    }
+    wx.setStorageSync(PENDING_REIMBURSEMENT_STORAGE_KEY, {
+      id: this.data.reimbursementId,
+      title: this.data.currentView.title,
+    });
+    wx.switchTab({
+      url: "/pages/folder/index",
+    });
+  },
+  removeInvoice(e) {
+    const invoiceId = e.currentTarget.dataset.id;
+    if (!invoiceId || !this.data.reimbursementId) {
+      return;
+    }
+    wx.showModal({
+      title: "移除发票",
+      content: "移除后该发票会回到票夹未报销状态，是否继续？",
+      success: (result) => {
+        if (!result.confirm) {
+          return;
+        }
+        wx.showLoading({
+          title: "移除中",
+          mask: true,
+        });
+        wx.cloud
+          .callFunction({
+            name: "quickstartFunctions",
+            data: {
+              type: "removeInvoiceFromReimbursement",
+              id: this.data.reimbursementId,
+              invoiceId,
+            },
+          })
+          .then(() => {
+            wx.hideLoading();
+            wx.showToast({
+              title: "已移除发票",
+              icon: "success",
+            });
+            this.fetchReimbursementDetail(this.data.reimbursementId);
+          })
+          .catch(() => {
+            wx.hideLoading();
+            wx.showToast({
+              title: "移除失败",
+              icon: "none",
+            });
+          });
+      },
+    });
+  },
   handleTap(e) {
     const { page, label } = e.currentTarget.dataset;
     if (page) {
+      if (page === "/pages/folder/index" && this.data.reimbursementId) {
+        this.startAddFromFolder();
+        return;
+      }
       wx.navigateTo({
         url: page,
       });

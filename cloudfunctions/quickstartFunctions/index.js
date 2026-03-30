@@ -349,6 +349,18 @@ const buildReimbursementSnapshots = (invoices) => {
   }));
 };
 
+const calculateReimbursementTotals = (invoices) => {
+  const totalAmount = invoices.reduce(
+    (total, invoice) => total + Number(invoice.totalAmount || invoice.amount || 0),
+    0
+  );
+  return {
+    invoiceCount: invoices.length,
+    subtotalAmount: totalAmount,
+    totalAmount,
+  };
+};
+
 const formatReimbursementSummary = (reimbursement) => {
   return {
     _id: reimbursement._id,
@@ -788,6 +800,190 @@ const createReimbursementDraft = async (event) => {
       _id: addResult._id,
       invoiceCount: availableInvoices.length,
       totalAmount,
+    },
+  };
+};
+
+const addInvoicesToReimbursement = async (event) => {
+  const invoiceSeedResult = await ensureInvoiceSeedData();
+  await ensureReimbursementCollection();
+  const reimbursementId = event.id || (event.data && event.data.id);
+  const invoiceIds = (event.invoiceIds || (event.data && event.data.invoiceIds) || []).filter(
+    Boolean
+  );
+  if (!reimbursementId) {
+    return {
+      success: false,
+      errMsg: "reimbursement id is required",
+    };
+  }
+  if (!invoiceIds.length) {
+    return {
+      success: false,
+      errMsg: "invoice ids are required",
+    };
+  }
+  const reimbursementResult = await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      _id: reimbursementId,
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .limit(1)
+    .get();
+  if (!reimbursementResult.data.length) {
+    return {
+      success: false,
+      errMsg: "reimbursement not found",
+    };
+  }
+  const reimbursement = reimbursementResult.data[0];
+  if (reimbursement.status !== "draft") {
+    return {
+      success: false,
+      errMsg: "only draft reimbursement can add invoices",
+    };
+  }
+  const invoiceResult = await db
+    .collection(INVOICES_COLLECTION)
+    .where({
+      _id: db.command.in(invoiceIds),
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .get();
+  const existingInvoiceIds = reimbursement.invoiceIds || [];
+  const appendableInvoices = invoiceResult.data.filter(
+    (invoice) =>
+      !existingInvoiceIds.includes(invoice._id) &&
+      (invoice.reimburseStatus === "unreimbursed" ||
+        invoice.linkedReimbursementId === reimbursementId)
+  );
+  if (!appendableInvoices.length) {
+    return {
+      success: false,
+      errMsg: "no invoices can be appended",
+    };
+  }
+  const nextInvoiceIds = existingInvoiceIds.concat(
+    appendableInvoices.map((invoice) => invoice._id)
+  );
+  const nextSnapshots = (reimbursement.invoiceSnapshots || []).concat(
+    buildReimbursementSnapshots(appendableInvoices)
+  );
+  const nextInvoices = nextSnapshots.map((snapshot) => ({
+    totalAmount: snapshot.amount,
+    amount: snapshot.amount,
+  }));
+  const totals = calculateReimbursementTotals(nextInvoices);
+  await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      _id: reimbursementId,
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .update({
+      data: {
+        invoiceIds: nextInvoiceIds,
+        invoiceSnapshots: nextSnapshots,
+        invoiceCount: totals.invoiceCount,
+        subtotalAmount: totals.subtotalAmount,
+        totalAmount: totals.totalAmount,
+        updatedAt: Date.now(),
+      },
+    });
+  await updateInvoicesReimbursementState(
+    invoiceSeedResult.openid,
+    appendableInvoices.map((invoice) => invoice._id),
+    "in_reimbursement",
+    reimbursementId
+  );
+  return {
+    success: true,
+    data: {
+      _id: reimbursementId,
+      appendedCount: appendableInvoices.length,
+      invoiceCount: totals.invoiceCount,
+      totalAmount: totals.totalAmount,
+    },
+  };
+};
+
+const removeInvoiceFromReimbursement = async (event) => {
+  const invoiceSeedResult = await ensureInvoiceSeedData();
+  await ensureReimbursementCollection();
+  const reimbursementId = event.id || (event.data && event.data.id);
+  const invoiceId = event.invoiceId || (event.data && event.data.invoiceId);
+  if (!reimbursementId || !invoiceId) {
+    return {
+      success: false,
+      errMsg: "reimbursement id and invoice id are required",
+    };
+  }
+  const reimbursementResult = await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      _id: reimbursementId,
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .limit(1)
+    .get();
+  if (!reimbursementResult.data.length) {
+    return {
+      success: false,
+      errMsg: "reimbursement not found",
+    };
+  }
+  const reimbursement = reimbursementResult.data[0];
+  if (reimbursement.status !== "draft") {
+    return {
+      success: false,
+      errMsg: "only draft reimbursement can remove invoices",
+    };
+  }
+  const nextInvoiceIds = (reimbursement.invoiceIds || []).filter((id) => id !== invoiceId);
+  const nextSnapshots = (reimbursement.invoiceSnapshots || []).filter(
+    (item) => item.invoiceId !== invoiceId
+  );
+  const totals = calculateReimbursementTotals(
+    nextSnapshots.map((snapshot) => ({
+      totalAmount: snapshot.amount,
+      amount: snapshot.amount,
+    }))
+  );
+  await db
+    .collection(REIMBURSEMENTS_COLLECTION)
+    .where({
+      _id: reimbursementId,
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .update({
+      data: {
+        invoiceIds: nextInvoiceIds,
+        invoiceSnapshots: nextSnapshots,
+        invoiceCount: totals.invoiceCount,
+        subtotalAmount: totals.subtotalAmount,
+        totalAmount: totals.totalAmount,
+        updatedAt: Date.now(),
+      },
+    });
+  await updateInvoicesReimbursementState(
+    invoiceSeedResult.openid,
+    [invoiceId],
+    "unreimbursed",
+    ""
+  );
+  return {
+    success: true,
+    data: {
+      _id: reimbursementId,
+      removedInvoiceId: invoiceId,
+      invoiceCount: totals.invoiceCount,
+      totalAmount: totals.totalAmount,
     },
   };
 };
@@ -1316,5 +1512,9 @@ exports.main = async (event, context) => {
       return await submitReimbursement(event);
     case "deleteReimbursementDraft":
       return await deleteReimbursementDraft(event);
+    case "addInvoicesToReimbursement":
+      return await addInvoicesToReimbursement(event);
+    case "removeInvoiceFromReimbursement":
+      return await removeInvoiceFromReimbursement(event);
   }
 };

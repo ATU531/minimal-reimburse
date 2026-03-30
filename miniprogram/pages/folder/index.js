@@ -1,4 +1,5 @@
 const LOCAL_INVOICES_STORAGE_KEY = "localDraftInvoices";
+const PENDING_REIMBURSEMENT_STORAGE_KEY = "pendingReimbursementTarget";
 
 Page({
   data: {
@@ -8,6 +9,7 @@ Page({
     selectedCount: 2,
     loading: false,
     syncingLocalDrafts: false,
+    pendingReimbursementTarget: null,
     allInvoices: [],
     filters: [
       { id: "all", label: "全部" },
@@ -58,6 +60,10 @@ Page({
     ],
   },
   onShow() {
+    this.setData({
+      pendingReimbursementTarget:
+        wx.getStorageSync(PENDING_REIMBURSEMENT_STORAGE_KEY) || null,
+    });
     this.syncLocalDrafts().finally(() => {
       this.fetchInvoices();
     });
@@ -313,6 +319,12 @@ Page({
     });
     this.fetchInvoices();
   },
+  clearPendingReimbursementTarget() {
+    wx.removeStorageSync(PENDING_REIMBURSEMENT_STORAGE_KEY);
+    this.setData({
+      pendingReimbursementTarget: null,
+    });
+  },
   selectFilter(e) {
     const activeFilter = e.currentTarget.dataset.id;
     this.setData({
@@ -363,13 +375,15 @@ Page({
         title: "生成草稿中",
         mask: true,
       });
+      const pendingTarget = this.data.pendingReimbursementTarget;
       wx.cloud
         .callFunction({
           name: "quickstartFunctions",
           data: {
-            type: "createReimbursementDraft",
+            type: pendingTarget ? "addInvoicesToReimbursement" : "createReimbursementDraft",
+            id: pendingTarget && pendingTarget.id,
             invoiceIds: selectedInvoices.map((item) => item.id),
-            title: "票夹新建报销单",
+            title: pendingTarget ? pendingTarget.title : "票夹新建报销单",
           },
         })
         .then((response) => {
@@ -378,6 +392,9 @@ Page({
             throw new Error((result && result.errMsg) || "create reimbursement failed");
           }
           wx.hideLoading();
+          if (pendingTarget) {
+            this.clearPendingReimbursementTarget();
+          }
           wx.navigateTo({
             url: `/pages/reimburse-detail/index?id=${result.data._id}`,
           });
@@ -385,7 +402,7 @@ Page({
         .catch(() => {
           wx.hideLoading();
           wx.showToast({
-            title: "生成报销单失败",
+            title: pendingTarget ? "追加发票失败" : "生成报销单失败",
             icon: "none",
           });
         });
