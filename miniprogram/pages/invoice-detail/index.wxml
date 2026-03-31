@@ -48,8 +48,8 @@
   </view>
 
   <view class="bottom-actions">
-    <view class="secondary-btn" data-label="导出 PDF" data-page="/pages/export-center/index?type=pdf" bindtap="handleTap">导出 PDF</view>
-    <view class="secondary-btn" data-label="导出 Excel" data-page="/pages/export-center/index?type=excel" bindtap="handleTap">导出 Excel</view>
+    <view class="secondary-btn" data-label="导出 PDF" data-page="{{'/pages/export-center/index?type=pdf&scope=invoice' + (invoiceId ? '&scopeId=' + invoiceId : '')}}" bindtap="handleTap">导出 PDF</view>
+    <view class="secondary-btn" data-label="导出 Excel" data-page="{{'/pages/export-center/index?type=excel&scope=invoice' + (invoiceId ? '&scopeId=' + invoiceId : '')}}" bindtap="handleTap">导出 Excel</view>
     <view class="primary-btn" data-label="加入报销单" data-page="/pages/reimburse-detail/index?from=invoice" bindtap="handleTap">加入报销单</view>
   </view>
 </view>

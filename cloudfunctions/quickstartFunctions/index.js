@@ -6,6 +6,7 @@ cloud.init({
 const db = cloud.database();
 const INVOICES_COLLECTION = "invoices";
 const REIMBURSEMENTS_COLLECTION = "reimbursements";
+const EXPORT_JOBS_COLLECTION = "export_jobs";
 
 const isCollectionMissingError = (error) => {
   const message = String(error && (error.errMsg || error.message || error));
@@ -317,6 +318,26 @@ const getReimbursementStatusLabel = (status) => {
   return statusMap[status] || "草稿";
 };
 
+const getExportStatusLabel = (status) => {
+  const statusMap = {
+    queued: "排队中",
+    processing: "处理中",
+    success: "已完成",
+    failed: "失败",
+    canceled: "已取消",
+  };
+  return statusMap[status] || "排队中";
+};
+
+const getExportFormatLabel = (format) => {
+  const formatMap = {
+    pdf: "PDF",
+    excel: "Excel",
+    zip: "ZIP",
+  };
+  return formatMap[format] || "文件";
+};
+
 const buildReimbursementTimeline = (reimbursement) => {
   return [
     {
@@ -433,6 +454,10 @@ const ensureInvoiceSeedData = async () => {
 
 const ensureReimbursementCollection = async () => {
   await ensureCollectionExists(REIMBURSEMENTS_COLLECTION);
+};
+
+const ensureExportJobsCollection = async () => {
+  await ensureCollectionExists(EXPORT_JOBS_COLLECTION);
 };
 
 const createInvoiceCollection = async () => {
@@ -1142,6 +1167,222 @@ const deleteReimbursementDraft = async (event) => {
   };
 };
 
+const normalizeScopeType = (scopeType) => {
+  if (scopeType === "reimburse") {
+    return "reimbursement";
+  }
+  if (scopeType === "folder") {
+    return "filtered_result";
+  }
+  return scopeType || "filtered_result";
+};
+
+const resolveExportInvoiceIds = async (openid, scopeType, scopeId, invoiceIds) => {
+  if (Array.isArray(invoiceIds) && invoiceIds.length) {
+    return invoiceIds;
+  }
+  if (scopeType === "invoice" && scopeId) {
+    return [scopeId];
+  }
+  if (scopeType === "reimbursement" && scopeId) {
+    const reimbursementResult = await db
+      .collection(REIMBURSEMENTS_COLLECTION)
+      .where({
+        _id: scopeId,
+        openid,
+        deletedAt: null,
+      })
+      .limit(1)
+      .get();
+    if (reimbursementResult.data.length) {
+      return reimbursementResult.data[0].invoiceIds || [];
+    }
+  }
+  const invoiceResult = await db
+    .collection(INVOICES_COLLECTION)
+    .where({
+      openid,
+      deletedAt: null,
+    })
+    .orderBy("updatedAt", "desc")
+    .limit(20)
+    .get();
+  return invoiceResult.data.map((item) => item._id);
+};
+
+const markInvoicesAsExported = async (openid, invoiceIds) => {
+  for (let i = 0; i < invoiceIds.length; i++) {
+    await db
+      .collection(INVOICES_COLLECTION)
+      .where({
+        _id: invoiceIds[i],
+        openid,
+        deletedAt: null,
+      })
+      .update({
+        data: {
+          exportStatus: "exported",
+          updatedAt: Date.now(),
+        },
+      });
+  }
+};
+
+const progressExportJob = async (openid, job) => {
+  const elapsed = Date.now() - Number(job.createdAt || 0);
+  if (job.status === "queued" && elapsed >= 1200) {
+    await db
+      .collection(EXPORT_JOBS_COLLECTION)
+      .where({
+        _id: job._id,
+        openid,
+        deletedAt: null,
+      })
+      .update({
+        data: {
+          status: "processing",
+          startedAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      });
+    return Object.assign({}, job, {
+      status: "processing",
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  }
+  if (job.status === "processing" && elapsed >= 3200) {
+    const fileName = `${job.jobTitle}.${job.format === "excel" ? "xlsx" : "pdf"}`;
+    await db
+      .collection(EXPORT_JOBS_COLLECTION)
+      .where({
+        _id: job._id,
+        openid,
+        deletedAt: null,
+      })
+      .update({
+        data: {
+          status: "success",
+          fileName,
+          fileId: `cloud://mock-export/${job._id}/${fileName}`,
+          finishedAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      });
+    if (Array.isArray(job.invoiceIds) && job.invoiceIds.length) {
+      await markInvoicesAsExported(openid, job.invoiceIds);
+    }
+    return Object.assign({}, job, {
+      status: "success",
+      fileName,
+      fileId: `cloud://mock-export/${job._id}/${fileName}`,
+      finishedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  }
+  return job;
+};
+
+const createExportJob = async (event) => {
+  const invoiceSeedResult = await ensureInvoiceSeedData();
+  await ensureReimbursementCollection();
+  await ensureExportJobsCollection();
+  const payload = (event && event.data) || {};
+  const format = payload.format || event.format || "pdf";
+  const scopeType = normalizeScopeType(payload.scopeType || event.scopeType);
+  const scopeId = payload.scopeId || event.scopeId || "";
+  const invoiceIds = await resolveExportInvoiceIds(
+    invoiceSeedResult.openid,
+    scopeType,
+    scopeId,
+    payload.invoiceIds || event.invoiceIds
+  );
+  const now = Date.now();
+  const jobTitle = payload.jobTitle || `${getExportFormatLabel(format)}导出任务`;
+  const addResult = await db.collection(EXPORT_JOBS_COLLECTION).add({
+    data: {
+      openid: invoiceSeedResult.openid,
+      tenantId: "default",
+      jobType: "export",
+      scopeType,
+      scopeId,
+      invoiceIds,
+      reimbursementId: scopeType === "reimbursement" ? scopeId : "",
+      format,
+      status: "queued",
+      filters: payload.filters || null,
+      templateId: payload.templateId || "",
+      fileId: "",
+      fileName: "",
+      fileSize: 0,
+      errorMessage: "",
+      jobTitle,
+      startedAt: null,
+      finishedAt: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    },
+  });
+  return {
+    success: true,
+    data: {
+      _id: addResult._id,
+      status: "queued",
+      statusLabel: getExportStatusLabel("queued"),
+      format,
+      jobTitle,
+    },
+  };
+};
+
+const listExportJobs = async (event) => {
+  const invoiceSeedResult = await ensureInvoiceSeedData();
+  await ensureExportJobsCollection();
+  const payload = (event && event.data) || {};
+  const scopeType = normalizeScopeType(payload.scopeType || event.scopeType || "");
+  const scopeId = payload.scopeId || event.scopeId || "";
+  const records = await db
+    .collection(EXPORT_JOBS_COLLECTION)
+    .where({
+      openid: invoiceSeedResult.openid,
+      deletedAt: null,
+    })
+    .orderBy("createdAt", "desc")
+    .get();
+  const progressedJobs = [];
+  for (let i = 0; i < records.data.length; i++) {
+    const progressed = await progressExportJob(invoiceSeedResult.openid, records.data[i]);
+    progressedJobs.push(progressed);
+  }
+  const filteredJobs = progressedJobs.filter((job) => {
+    if (scopeType && job.scopeType !== scopeType) {
+      return false;
+    }
+    if (scopeId && job.scopeId !== scopeId) {
+      return false;
+    }
+    return true;
+  });
+  return {
+    success: true,
+    data: filteredJobs.map((job) => ({
+      _id: job._id,
+      jobTitle: job.jobTitle,
+      scopeType: job.scopeType,
+      scopeId: job.scopeId,
+      format: job.format,
+      formatLabel: getExportFormatLabel(job.format),
+      status: job.status,
+      statusLabel: getExportStatusLabel(job.status),
+      fileId: job.fileId,
+      fileName: job.fileName,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+    })),
+  };
+};
+
 const updateInvoice = async (event) => {
   const result = await ensureInvoiceSeedData();
   const invoiceId = event.id || (event.data && event.data.id);
@@ -1516,5 +1757,14 @@ exports.main = async (event, context) => {
       return await addInvoicesToReimbursement(event);
     case "removeInvoiceFromReimbursement":
       return await removeInvoiceFromReimbursement(event);
+    case "createExportJob":
+      return await createExportJob(event);
+    case "listExportJobs":
+      return await listExportJobs(event);
+    default:
+      return {
+        success: false,
+        errMsg: `unknown event type: ${event && event.type}`,
+      };
   }
 };

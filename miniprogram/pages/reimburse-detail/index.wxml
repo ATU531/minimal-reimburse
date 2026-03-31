@@ -88,8 +88,8 @@
   </view>
 
   <view class="bottom-actions">
-    <view class="secondary-btn" data-page="/pages/export-center/index?type=pdf&scope=reimburse" bindtap="handleTap">导出 PDF</view>
-    <view class="secondary-btn" data-page="/pages/export-center/index?type=excel&scope=reimburse" bindtap="handleTap">导出 Excel</view>
+    <view class="secondary-btn" data-page="{{'/pages/export-center/index?type=pdf&scope=reimbursement' + (reimbursementId ? '&scopeId=' + reimbursementId : '')}}" bindtap="handleTap">导出 PDF</view>
+    <view class="secondary-btn" data-page="{{'/pages/export-center/index?type=excel&scope=reimbursement' + (reimbursementId ? '&scopeId=' + reimbursementId : '')}}" bindtap="handleTap">导出 Excel</view>
     <view class="primary-btn" data-label="提交报销单" bindtap="handleTap">{{currentView.status === '已提交' ? '已提交' : '提交报销单'}}</view>
   </view>
 </view>

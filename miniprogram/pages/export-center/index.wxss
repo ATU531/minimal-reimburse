@@ -42,6 +42,25 @@ page {
   color: #101828;
 }
 
+.format-row {
+  margin-top: 18rpx;
+  display: flex;
+  gap: 14rpx;
+}
+
+.format-pill {
+  padding: 14rpx 22rpx;
+  border-radius: 999rpx;
+  background: #f7f8fa;
+  font-size: 24rpx;
+  color: #667085;
+}
+
+.format-pill-active {
+  background: #101828;
+  color: #ffffff;
+}
+
 .task-list,
 .preset-list {
   display: flex;
