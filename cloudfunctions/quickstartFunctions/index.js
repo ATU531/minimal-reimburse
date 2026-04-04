@@ -1715,6 +1715,137 @@ const deleteRecord = async (event) => {
 // const updateRecord = require('./updateRecord/index');
 // const fetchGoodsList = require('./fetchGoodsList/index');
 // const genMpQrcode = require('./genMpQrcode/index');
+
+const getAccessToken = async () => {
+  const appId = process.env.WX_APPID || cloud.getWXContext().APPID;
+  const secret = process.env.WX_SECRET || "";
+  if (!secret) {
+    throw new Error("未配置微信小程序secret，请在环境变量中设置WX_SECRET");
+  }
+  const res = await new Promise((resolve, reject) => {
+    const https = require("https");
+    const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${secret}`;
+    https
+      .get(url, (response) => {
+        let data = "";
+        response.on("data", (chunk) => (data += chunk));
+        response.on("end", () => resolve(JSON.parse(data)));
+      })
+      .on("error", reject);
+  });
+  if (res.errcode) {
+    throw new Error(`获取access_token失败: ${res.errmsg} (${res.errcode})`);
+  }
+  return res.access_token;
+};
+
+const getInvoiceInfo = async (event) => {
+  console.log("[Card Invoice] Getting invoice info...");
+  console.log(
+    "[Card Invoice] Received event keys:",
+    Object.keys(event || {})
+  );
+  console.log(
+    "[Card Invoice] cardId:",
+    event.cardId,
+    "encryptCode length:",
+    (event.encryptCode || "").length
+  );
+  if (!event.cardId || !event.encryptCode) {
+    return {
+      success: false,
+      errMsg: "缺少必要参数: cardId 或 encryptCode",
+      errCode: "MISSING_PARAMS",
+    };
+  }
+  try {
+    const accessToken = await getAccessToken();
+    console.log("[Card Invoice] Got access token");
+    const requestData = JSON.stringify({
+      card_id: event.cardId,
+      encrypt_code: event.encryptCode,
+    });
+    const invoiceRes = await new Promise((resolve, reject) => {
+      const https = require("https");
+      const url = `https://api.weixin.qq.com/card/invoice/reimburse/getinvoiceinfo?access_token=${accessToken}`;
+      const urlObj = new URL(url);
+      const options = {
+        hostname: urlObj.hostname,
+        path: urlObj.pathname + urlObj.search,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(requestData),
+        },
+      };
+      const req = https.request(options, (response) => {
+        let data = "";
+        response.on("data", (chunk) => (data += chunk));
+        response.on("end", () => resolve(JSON.parse(data)));
+      });
+      req.on("error", reject);
+      req.write(requestData);
+      req.end();
+    });
+    console.log(
+      "[Card Invoice] API response:",
+      JSON.stringify(invoiceRes)
+    );
+    if (invoiceRes.errcode && invoiceRes.errcode !== 0) {
+      return {
+        success: false,
+        errMsg: `查询发票失败: ${invoiceRes.errmsg} (${invoiceRes.errcode})`,
+        errCode: String(invoiceRes.errcode),
+      };
+    }
+    const invoiceInfo = invoiceRes.invoice_info || {};
+    const parsedData = parseWechatCardInvoice(invoiceInfo);
+    console.log("[Card Invoice] Parsed data:", JSON.stringify(parsedData));
+    return {
+      success: true,
+      data: parsedData,
+      provider: "wechat_card",
+      rawResponse: invoiceInfo,
+    };
+  } catch (error) {
+    console.error("[Card Invoice] Error:", error);
+    return {
+      success: false,
+      errMsg: error.message || "获取发票信息失败",
+      errCode: "CARD_INVOICE_ERROR",
+    };
+  }
+};
+
+const parseWechatCardInvoice = (info) => {
+  const result = {};
+  if (!info) return result;
+  const mapField = (src, dst) => {
+    if (info[src]) result[dst || src] = String(info[src]).trim();
+  };
+  mapField("title");
+  mapField("invoice_code", "invoiceCode");
+  mapField("invoice_number", "invoiceNumber");
+  mapField("invoice_date", "issueDate");
+  mapField("invoice_type", "invoiceType");
+  mapField("payee", "buyerName");
+  mapField("drawer", "sellerName");
+  mapField("total_amount", "totalAmountWithTax");
+  mapField("amount_without_tax", "totalAmount");
+  mapField("tax_amount", "taxAmount");
+  mapField("buyer_tax_id", "buyerTaxId");
+  mapField("seller_tax_id", "sellerTaxId");
+  if (info.total_amount && !isNaN(parseFloat(info.total_amount))) {
+    result.amount = parseFloat(info.total_amount) * 100;
+  }
+  if (info.amount_without_tax && !isNaN(parseFloat(info.amount_without_tax))) {
+    result.totalAmount = parseFloat(info.amount_without_tax);
+  }
+  if (info.tax_amount && !isNaN(parseFloat(info.tax_amount))) {
+    result.taxAmount = parseFloat(info.tax_amount);
+  }
+  return Object.keys(result).length > 0 ? result : null;
+};
 // 云函数入口函数
 exports.main = async (event, context) => {
   switch (event.type) {
@@ -1768,6 +1899,8 @@ exports.main = async (event, context) => {
       return await listExportJobs(event);
     case "ocrInvoice":
       return await ocrInvoice(event);
+    case "getInvoiceInfo":
+      return await getInvoiceInfo(event);
     default:
       return {
         success: false,

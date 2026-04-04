@@ -46,6 +46,7 @@ Page({
         subtitle: "导入卡包中的电子发票并补齐票据字段",
         guide: "适合同步已开具完成的电子票，减少二次上传动作。",
         actionLabel: "同步卡包",
+        action: "syncCard",
       },
       local: {
         title: "本地文件导入",
@@ -114,7 +115,11 @@ Page({
     return matchedOption ? matchedOption.label : "电子普票";
   },
   handleTap(e) {
-    const { page, label } = e.currentTarget.dataset;
+    const { page, label, action } = e.currentTarget.dataset;
+    if (action === "syncCard") {
+      this.chooseInvoiceFromCard();
+      return;
+    }
     if (page) {
       wx.navigateTo({
         url: page,
@@ -125,6 +130,180 @@ Page({
       title: label,
       icon: "none",
     });
+  },
+  chooseInvoiceFromCard() {
+    wx.showLoading({
+      title: "正在打开卡包...",
+      mask: true,
+    });
+    wx
+      .chooseInvoice({
+        success: (res) => {
+          wx.hideLoading();
+          console.log("[Card Invoice] Selected:", res.invoiceInfo);
+          let invoiceInfo;
+          try {
+            invoiceInfo = typeof res.invoiceInfo === "string"
+              ? JSON.parse(res.invoiceInfo)
+              : res.invoiceInfo;
+          } catch (e) {
+            console.error("[Card Invoice] Parse error:", e);
+            wx.showToast({
+              title: "发票信息解析失败",
+              icon: "none",
+            });
+            return;
+          }
+          if (Array.isArray(invoiceInfo)) {
+            invoiceInfo = invoiceInfo[0] || null;
+          }
+          if (!invoiceInfo || typeof invoiceInfo !== "object") {
+            wx.showToast({
+              title: "发票信息格式异常",
+              icon: "none",
+            });
+            return;
+          }
+          console.log(
+            "[Card Invoice] parsed type:",
+            typeof invoiceInfo,
+            "keys:",
+            Object.keys(invoiceInfo)
+          );
+          const cardId = invoiceInfo.card_id || "";
+          const encryptCode = invoiceInfo.encrypt_code || "";
+          const appId = invoiceInfo.app_id || "";
+          console.log(
+            "[Card Invoice] cardId:",
+            cardId,
+            "encryptCode:",
+            encryptCode
+          );
+          if (!cardId || !encryptCode) {
+            console.error(
+              "[Card Invoice] Missing fields:",
+              JSON.stringify(invoiceInfo)
+            );
+            wx.showToast({
+              title: "发票信息不完整",
+              icon: "none",
+            });
+            return;
+          }
+          this.queryInvoiceDetail({ cardId, encryptCode, appId });
+        },
+        fail: (err) => {
+          wx.hideLoading();
+          console.error("[Card Invoice] Failed:", err);
+          if (
+            err.errMsg &&
+            (err.errMsg.includes("cancel") || err.errMsg.includes("auth deny"))
+          ) {
+            return;
+          }
+          if (err.errMsg && err.errMsg.includes("scope unauthorized")) {
+            wx.showModal({
+              title: "需要授权",
+              content: "请允许访问您的微信卡包发票，以便同步电子发票",
+              confirmText: "去设置",
+              success: (res) => {
+                if (res.confirm) {
+                  wx.openSetting({});
+                }
+              },
+            });
+            return;
+          }
+          wx.showToast({
+            title: err.errMsg || "打开卡包失败",
+            icon: "none",
+            duration: 3000,
+          });
+        },
+      });
+  },
+  queryInvoiceDetail(invoiceInfo) {
+    wx.showLoading({
+      title: "正在获取发票详情...",
+      mask: true,
+    });
+    wx.cloud
+      .callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "getInvoiceInfo",
+          cardId: invoiceInfo.cardId,
+          encryptCode: invoiceInfo.encryptCode,
+          appId: invoiceInfo.appId,
+        },
+      })
+      .then((res) => {
+        wx.hideLoading();
+        console.log(
+          "[Card Invoice] Detail response:",
+          JSON.stringify(res.result)
+        );
+        const result = res.result;
+        if (!result || result.success === false) {
+          const errorMsg =
+            (result && result.errMsg) || "获取发票详情失败";
+          wx.showToast({
+            title: errorMsg.length > 20
+              ? errorMsg.substring(0, 20) + "..."
+              : errorMsg,
+            icon: "none",
+            duration: 3000,
+          });
+          return;
+        }
+        const invoiceData = result.data || {};
+        console.log("[Card Invoice] Parsed data:", JSON.stringify(invoiceData));
+        this.setData({
+          selectedFile: {
+            name: invoiceData.title || "卡包电子发票",
+            size: 0,
+            path: "",
+            type: "card",
+            fileType: "card",
+            time: new Date().toLocaleString("zh-CN"),
+            cardId: invoiceInfo.card_id,
+          },
+        });
+        if (!this.data.form.title && invoiceData.title) {
+          this.setData({ "form.title": invoiceData.title });
+        }
+        const displayOcrData = this.addDisplayFields(invoiceData);
+        this.setData({
+          ocrResult: displayOcrData,
+          ocrProvider: "wechat_card",
+        });
+        this.fillFormWithOcrResult(invoiceData);
+        wx.showToast({
+          title: "同步成功",
+          icon: "success",
+        });
+      })
+      .catch((error) => {
+        wx.hideLoading();
+        console.error("[Card Invoice] Query failed:", error);
+        let displayMsg = "获取发票详情失败";
+        if (error && error.errMsg) {
+          if (error.errMsg.includes("timeout")) {
+            displayMsg = "请求超时，请重试";
+          } else if (error.errMsg.includes("-1")) {
+            displayMsg = "网络异常，请检查网络";
+          } else {
+            displayMsg = error.errMsg.length > 15
+              ? error.errMsg.substring(0, 15) + "..."
+              : error.errMsg;
+          }
+        }
+        wx.showToast({
+          title: displayMsg,
+          icon: "none",
+          duration: 3000,
+        });
+      });
   },
   chooseMessageFile() {
     wx.chooseMessageFile({

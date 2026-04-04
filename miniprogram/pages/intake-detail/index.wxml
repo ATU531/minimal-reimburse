@@ -505,7 +505,7 @@
     </block>
     <block wx:else>
       <view class="secondary-btn" data-label="预览识别" bindtap="handleTap">预览识别</view>
-      <view class="primary-btn" data-label="{{currentSource.actionLabel || '保存到票夹'}}" data-page="{{currentSource.actionPage}}" bindtap="handleTap">{{currentSource.actionLabel || '保存到票夹'}}</view>
+      <view class="primary-btn" data-label="{{currentSource.actionLabel || '保存到票夹'}}" data-page="{{currentSource.actionPage}}" data-action="{{currentSource.action || ''}}" bindtap="handleTap">{{currentSource.actionLabel || '保存到票夹'}}</view>
     </block>
   </view>
 </view>
