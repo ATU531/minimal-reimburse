@@ -1888,7 +1888,7 @@ const recognizeWithMock = async (fileID, payload) => {
 };
 
 const recognizeWithTencent = async (fileID, payload) => {
-  console.log("[Tencent OCR] Starting VatInvoiceOCR via SDK");
+  console.log("[Tencent OCR] Starting RecognizeGeneralInvoice (supports PDF)");
   const config = OCR_CONFIG.providers.tencent;
   if (!config.enabled || !config.secretId || !config.secretKey) {
     throw new Error(
@@ -1908,13 +1908,23 @@ const recognizeWithTencent = async (fileID, payload) => {
     throw new Error("download file failed or empty content");
   }
   const buffer = downloadResult.fileContent;
-  const base64Image = Buffer.isBuffer(buffer)
+  
+  const isPdf = buffer.length > 4 && 
+    buffer[0] === 0x25 && buffer[1] === 0x50 && 
+    buffer[2] === 0x44 && buffer[3] === 0x46;
+  
+  console.log("[Tencent OCR] File type:", isPdf ? "PDF" : "Image");
+  console.log("[Tencent OCR] File size:", buffer.length, "bytes");
+  
+  const base64Data = Buffer.isBuffer(buffer)
     ? buffer.toString("base64")
     : Buffer.from(buffer).toString("base64");
+  
   console.log(
-    "[Tencent OCR] Image converted to base64, length:",
-    base64Image.length
+    "[Tencent OCR] Data converted to base64, length:",
+    base64Data.length
   );
+  
   const clientConfig = {
     credential: {
       secretId: config.secretId,
@@ -1928,42 +1938,122 @@ const recognizeWithTencent = async (fileID, payload) => {
     },
   };
   let client = new OcrClient(clientConfig);
-  console.log("[Tencent OCR] Calling VatInvoiceOCR API...");
-  const req = { ImageBase64: base64Image };
-  const response = await client.VatInvoiceOCR(req);
+  
+  console.log("[Tencent OCR] Calling RecognizeGeneralInvoice API (supports PDF)...");
+  const req = { 
+    ImageBase64: base64Data,
+    EnablePdf: true,
+    PdfPageNumber: 1
+  };
+  
+  const startTime = Date.now();
+  const response = await client.RecognizeGeneralInvoice(req);
+  const elapsed = Date.now() - startTime;
+  
   console.log(
-    "[Tencent OCR] API Response received",
+    "[Tencent OCR] API Response received in", elapsed, "ms",
     response.RequestId ? "(RequestId: " + response.RequestId + ")" : ""
   );
+  
   if (
     !response ||
-    !response.VatInvoiceInfos ||
-    response.VatInvoiceInfos.length === 0
+    (!response.MixedInvoiceItems || response.MixedInvoiceItems.length === 0) &&
+    (!response.VatInvoiceInfos || response.VatInvoiceInfos.length === 0)
   ) {
     return {
       success: false,
-      errMsg: "未能识别到发票信息，请确保图片清晰且为有效发票",
+      errMsg: "未能识别到发票信息，请确保文件清晰且为有效发票",
       errCode: "TENCENT_NO_RESULT",
       rawResponse: response,
     };
   }
-  const vatInfos = response.VatInvoiceInfos;
-  console.log("[Tencent OCR] Found", vatInfos.length, "fields");
-  console.log(
-    "[Tencent OCR] All fields:",
-    JSON.stringify(
-      vatInfos.map((item) => ({ name: item.Name, value: item.Value }))
-    )
-  );
-  const parsedData = parseTencentVatInvoiceInfos(vatInfos);
-  if (response.Items && response.Items.length > 0) {
-    parsedData.items = response.Items;
+  
+  let parsedData;
+  if (response.MixedInvoiceItems && response.MixedInvoiceItems.length > 0) {
+    console.log("[Tencent OCR] Using MixedInvoiceItems format");
+    const invoiceItem = response.MixedInvoiceItems[0];
+    
+    if (invoiceItem.Code !== "OK") {
+      return {
+        success: false,
+        errMsg: "识别失败: " + (invoiceItem.ErrorMsg || "未知错误"),
+        errCode: "RECOGNIZE_FAILED",
+        rawResponse: response,
+      };
+    }
+    
+    parsedData = parseMixedInvoiceItem(invoiceItem);
+  } else if (response.VatInvoiceInfos && response.VatInvoiceInfos.length > 0) {
+    console.log("[Tencent OCR] Using VatInvoiceInfos format");
+    parsedData = parseTencentVatInvoiceInfos(response.VatInvoiceInfos);
+  } else {
+    return {
+      success: false,
+      errMsg: "未能解析发票数据",
+      errCode: "PARSE_FAILED",
+      rawResponse: response,
+    };
   }
+  
+  console.log("[Tencent OCR] Parsed data:", JSON.stringify(parsedData));
+  
   return {
     success: true,
     data: parsedData,
     provider: "tencent",
   };
+};
+
+const parseMixedInvoiceItem = (item) => {
+  if (!item) {
+    return null;
+  }
+  
+  const result = {};
+  
+  if (item.SingleInvoiceInfos) {
+    const subTypes = Object.entries(item.SingleInvoiceInfos).filter(([k, v]) => v !== null);
+    if (subTypes.length > 0) {
+      const [subTypeName, data] = subTypes[0];
+      console.log("[Tencent OCR] Invoice subtype:", subTypeName);
+      
+      const mapField = (src, dst) => {
+        if (data[src]) result[dst || src] = String(data[src]).trim();
+      };
+      
+      mapField("Title", "title");
+      mapField("Number", "invoiceNumber");
+      mapField("Date", "issueDate");
+      mapField("Total", "totalAmountWithTax");
+      mapField("PretaxAmount", "totalAmount");
+      mapField("Buyer", "buyerName");
+      mapField("BuyerTaxID", "buyerTaxId");
+      mapField("Seller", "sellerName");
+      mapField("SellerTaxID", "sellerTaxId");
+      
+      if (data.Total && !isNaN(parseFloat(data.Total))) {
+        result.amount = parseFloat(data.Total) * 100;
+      }
+      if (data.Tax && !isNaN(parseFloat(data.Tax))) {
+        result.taxAmount = parseFloat(data.Tax) * 100;
+      }
+      
+      if (data.VatElectronicItems && data.VatElectronicItems.length > 0) {
+        result.items = data.VatElectronicItems.map((item, idx) => ({
+          name: item.Name,
+          amount: item.Total ? parseFloat(item.Total) * 100 : undefined,
+          taxRate: item.TaxRate,
+        }));
+        
+        const firstItem = data.VatElectronicItems.find(i => i.Total && parseFloat(i.Total) > 0);
+        if (firstItem && firstItem.Name) {
+          result.serviceType = firstItem.Name.replace(/^\*[^*]*\*/, "");
+        }
+      }
+    }
+  }
+  
+  return Object.keys(result).length > 0 ? result : null;
 };
 
 const parseTencentVatInvoiceInfos = (vatInfos) => {

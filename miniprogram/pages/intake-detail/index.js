@@ -37,8 +37,8 @@ Page({
     sources: {
       chat: {
         title: "聊天记录导入",
-        subtitle: "从聊天图片、文件或转发内容中整理发票",
-        guide: "适合报销人先把零散票据转发到工作群，再批量筛出待识别内容。",
+        subtitle: "从聊天图片、PDF或转发内容中整理发票",
+        guide: "适合报销人先把零散票据（截图/文件）转发到工作群，再批量筛出待识别内容。",
         actionLabel: "选择聊天文件",
       },
       card: {
@@ -130,7 +130,6 @@ Page({
     wx.chooseMessageFile({
       count: 1,
       type: "file",
-      extension: [".pdf"],
       success: (res) => {
         const file = res.tempFiles[0];
         if (!file) {
@@ -140,16 +139,39 @@ Page({
           });
           return;
         }
+        const fileName = file.name || "";
+        const fileExt = fileName.split(".").pop().toLowerCase();
+        const isImage = ["jpg", "jpeg", "png", "bmp"].includes(fileExt);
+        const isPdf = fileExt === "pdf";
         this.setData({
           selectedFile: {
-            name: file.name,
-            size: file.size,
+            name: fileName,
+            size: Math.round(file.size / 1024),
             path: file.path,
             type: file.type,
+            fileType: isImage ? "image" : isPdf ? "pdf" : "unknown",
             time: new Date().toLocaleString("zh-CN"),
           },
         });
-        this.extractFileNameAsTitle(file.name);
+        if (!this.data.form.title) {
+          const nameWithoutExt = fileName.replace(
+            /\.(pdf|jpg|jpeg|png|bmp)$/i,
+            ""
+          );
+          if (nameWithoutExt.trim()) {
+            this.setData({
+              "form.title": nameWithoutExt,
+            });
+          }
+        }
+        if (isImage || isPdf) {
+          this.processChatFileOcr(file, isImage);
+        } else {
+          wx.showToast({
+            title: "暂不支持该文件格式",
+            icon: "none",
+          });
+        }
       },
       fail: (err) => {
         if (err.errMsg && err.errMsg.includes("cancel")) {
@@ -173,9 +195,114 @@ Page({
       });
     }
   },
+  processChatFileOcr(file, isImage) {
+    this.setData({
+      ocrLoading: true,
+      ocrResult: null,
+      ocrImage: isImage ? file.path : null,
+    });
+    wx.showLoading({
+      title: "正在识别发票...",
+      mask: true,
+    });
+    const cloudPath = `ocr-invoices/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}${isImage ? ".jpg" : ".pdf"}`;
+    wx.cloud
+      .uploadFile({
+        cloudPath: cloudPath,
+        filePath: file.path,
+      })
+      .then((res) => {
+        console.log("[Chat OCR] File uploaded, fileID:", res.fileID);
+        return wx.cloud.callFunction({
+          name: "quickstartFunctions",
+          data: {
+            type: "ocrInvoice",
+            data: {
+              fileID: res.fileID,
+            },
+          },
+          timeout: 25000,
+        });
+      })
+      .then((response) => {
+        wx.hideLoading();
+        this.setData({
+          ocrLoading: false,
+        });
+        const result = response && response.result;
+        console.log("[Chat OCR] Response:", JSON.stringify(result));
+        if (!result || result.success === false) {
+          const errorMsg = (result && result.errMsg) || "OCR识别失败";
+          const errCode = result && result.errCode;
+          console.error("[Chat OCR] Failed - Code:", errCode, "Msg:", errorMsg);
+          if (errCode) {
+            throw new Error(`[${errCode}] ${errorMsg}`);
+          } else {
+            throw new Error(errorMsg);
+          }
+        }
+        const ocrData = result.data || {};
+        const ocrProvider = result.provider || "unknown";
+        console.log("[Chat OCR] Data:", JSON.stringify(ocrData));
+        const displayOcrData = this.addDisplayFields(ocrData);
+        this.setData({
+          ocrResult: displayOcrData,
+          ocrProvider: ocrProvider,
+        });
+        this.fillFormWithOcrResult(ocrData);
+        let toastTitle = "识别成功";
+        if (ocrProvider === "mock") {
+          toastTitle = "模拟模式（开发测试）";
+          wx.showModal({
+            title: "提示",
+            content:
+              "当前使用模拟数据模式，显示的是预设的测试数据。如需真实OCR识别，请配置腾讯云或百度云OCR服务。",
+            showCancel: false,
+            confirmText: "我知道了",
+          });
+        } else {
+          wx.showToast({
+            title: toastTitle,
+            icon: "success",
+          });
+        }
+      })
+      .catch((error) => {
+        wx.hideLoading();
+        this.setData({
+          ocrLoading: false,
+        });
+        console.error("=== Chat OCR Error Details ===");
+        console.error("Error object:", error);
+        console.error("Error message:", error.message);
+        
+        let displayMsg = "识别失败，请手动填写";
+        if (
+          error &&
+          error.message &&
+          error.message.includes("-6041006")
+        ) {
+          displayMsg = "OCR服务未配置，请重新部署云函数";
+        } else if (error && error.message) {
+          displayMsg = error.message.length > 20
+            ? error.message.substring(0, 20) + "..."
+            : error.message;
+        }
+        wx.showToast({
+          title: displayMsg,
+          icon: "none",
+          duration: 3000,
+        });
+      });
+  },
   removeSelectedFile() {
     this.setData({
       selectedFile: null,
+      ocrImage: null,
+      ocrResult: null,
+      ocrLoading: false,
     });
   },
   takePhoto() {
@@ -270,8 +397,9 @@ Page({
         const ocrProvider = result.provider || "unknown";
         console.log("OCR Data:", JSON.stringify(ocrData));
         console.log("OCR Provider:", ocrProvider);
+        const displayOcrData = this.addDisplayFields(ocrData);
         this.setData({
-          ocrResult: ocrData,
+          ocrResult: displayOcrData,
           ocrProvider: ocrProvider,
         });
         this.fillFormWithOcrResult(ocrData);
@@ -320,6 +448,21 @@ Page({
         });
       });
   },
+  addDisplayFields(ocrData) {
+    if (!ocrData) return ocrData;
+    const result = { ...ocrData };
+    if (result.amount || result.totalAmountWithTax) {
+      let rawAmount = result.amount;
+      if (!rawAmount && result.totalAmountWithTax) {
+        rawAmount = Number(result.totalAmountWithTax) * 100;
+      }
+      result.displayAmount = Number(rawAmount || 0) / 100;
+    } else if (result.totalAmount) {
+      result.displayAmount = Number(result.totalAmount);
+    }
+    console.log("[Display] amount:", result.amount, "totalAmount:", result.totalAmount, "totalAmountWithTax:", result.totalAmountWithTax, "-> displayAmount:", result.displayAmount);
+    return result;
+  },
   fillFormWithOcrResult(ocrData) {
     if (!ocrData) {
       return;
@@ -335,8 +478,12 @@ Page({
     if (ocrData.title && !this.data.form.title) {
       formUpdates.title = ocrData.title;
     }
-    if (ocrData.totalAmount || ocrData.amount) {
-      const amount = Number(ocrData.totalAmount || ocrData.amount || 0) / 100;
+    if (ocrData.totalAmountWithTax || ocrData.amount) {
+      let rawAmount = ocrData.amount;
+      if (ocrData.totalAmountWithTax && !rawAmount) {
+        rawAmount = Number(ocrData.totalAmountWithTax) * 100;
+      }
+      const amount = Number(rawAmount || 0) / 100;
       console.log("[OCR Fill] Calculated amount:", amount);
       if (amount > 0 && !this.data.form.amount) {
         formUpdates.amount = String(amount);
@@ -603,6 +750,9 @@ Page({
     let sourceInfo;
     if (this.data.isChatMode) {
       const selectedFile = this.data.selectedFile;
+      const ocrResult = this.data.ocrResult || {};
+      const hasOcrResult =
+        Object.keys(ocrResult).length > 0 && ocrResult.title;
       requestPayload = {
         title: form.title.trim(),
         amount: Math.round(Number(form.amount) * 100),
@@ -618,14 +768,21 @@ Page({
         sourceType: "chat",
         sourceMeta: {
           channel: "wechat_chat",
+          fileType: selectedFile.fileType || "unknown",
           fileName: selectedFile.name,
           fileSize: selectedFile.size,
+          ocrConfidence: hasOcrResult
+            ? ocrResult.confidence || 0
+            : undefined,
         },
-        ocrStatus: "skipped",
+        ocrStatus: hasOcrResult ? "success" : "skipped",
+        verifyStatus: hasOcrResult ? "verified" : "unverified",
       };
       sourceInfo = {
         sourceType: "chat",
-        meta: `${selectedFile.name} · ${selectedFile.time}`,
+        meta: hasOcrResult
+          ? `${selectedFile.name} · OCR识别完成`
+          : `${selectedFile.name} · ${selectedFile.time}`,
       };
     } else if (this.data.isOcrMode) {
       const ocrResult = this.data.ocrResult || {};

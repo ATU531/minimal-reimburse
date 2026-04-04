@@ -68,9 +68,9 @@
             <view class="result-label">发票标题</view>
             <view class="result-value">{{ocrResult.title}}</view>
           </view>
-          <view class="result-item {{ocrResult.totalAmount || ocrResult.amount ? 'filled' : ''}}" wx:if="{{ocrResult.totalAmount || ocrResult.amount}}">
+          <view class="result-item {{ocrResult.displayAmount ? 'filled' : ''}}" wx:if="{{ocrResult.displayAmount}}">
             <view class="result-label">金额（元）</view>
-            <view class="result-value highlight">{{(ocrResult.totalAmount || ocrResult.amount) / 100}}</view>
+            <view class="result-value highlight">{{ocrResult.displayAmount}}</view>
           </view>
           <view class="result-item {{ocrResult.issueDate ? 'filled' : ''}}" wx:if="{{ocrResult.issueDate}}">
             <view class="result-label">开票日期</view>
@@ -230,14 +230,14 @@
       <block wx:if="{{!selectedFile}}">
         <view class="file-upload-area" bindtap="chooseMessageFile">
           <view class="upload-icon">📄</view>
-          <view class="upload-text">点击选择聊天中的PDF发票</view>
-          <view class="upload-hint">支持 .pdf 格式</view>
+          <view class="upload-text">点击选择聊天中的发票</view>
+          <view class="upload-hint">支持 PDF、JPG、PNG 等格式</view>
         </view>
       </block>
       <block wx:else>
         <view class="selected-file-card">
           <view class="file-info">
-            <view class="file-icon">📋</view>
+            <view class="file-icon">{{selectedFile.fileType === 'image' ? '🖼️' : '📋'}}</view>
             <view class="file-details">
               <view class="file-name">{{selectedFile.name}}</view>
               <view class="file-meta">{{selectedFile.size}} KB · {{selectedFile.time}}</view>
@@ -245,8 +245,70 @@
           </view>
           <view class="file-remove" bindtap="removeSelectedFile">✕</view>
         </view>
+
+        <block wx:if="{{ocrLoading}}">
+          <view class="chat-ocr-loading">
+            <view class="loading-spinner"></view>
+            <view class="loading-text">正在识别发票内容...</view>
+          </view>
+        </block>
+
+        <block wx:if="{{ocrImage && !ocrLoading}}">
+          <view class="chat-image-preview">
+            <image
+              class="preview-image"
+              src="{{ocrImage}}"
+              mode="aspectFit"
+            ></image>
+          </view>
+        </block>
       </block>
     </view>
+
+    <block wx:if="{{ocrResult}}">
+      <view class="section-card ocr-result-card">
+        <view class="section-title">识别结果预览</view>
+        <block wx:if="{{ocrProvider === 'mock'}}">
+          <view class="mock-mode-notice">
+            <view class="mock-icon">⚠️</view>
+            <view class="mock-text">
+              <view class="mock-title">模拟模式（开发测试）</view>
+              <view class="mock-desc">当前显示的是预设测试数据，非真实OCR识别结果</view>
+            </view>
+          </view>
+        </block>
+        <view class="result-grid">
+          <view class="result-item {{ocrResult.title ? 'filled' : ''}}" wx:if="{{ocrResult.title}}">
+            <view class="result-label">发票标题</view>
+            <view class="result-value">{{ocrResult.title}}</view>
+          </view>
+          <view class="result-item {{ocrResult.displayAmount ? 'filled' : ''}}" wx:if="{{ocrResult.displayAmount}}">
+            <view class="result-label">金额（元）</view>
+            <view class="result-value highlight">{{ocrResult.displayAmount}}</view>
+          </view>
+          <view class="result-item {{ocrResult.issueDate ? 'filled' : ''}}" wx:if="{{ocrResult.issueDate}}">
+            <view class="result-label">开票日期</view>
+            <view class="result-value">{{ocrResult.issueDate}}</view>
+          </view>
+          <view class="result-item {{ocrResult.buyerName ? 'filled' : ''}}" wx:if="{{ocrResult.buyerName}}">
+            <view class="result-label">购买方</view>
+            <view class="result-value">{{ocrResult.buyerName}}</view>
+          </view>
+          <view class="result-item {{ocrResult.sellerName ? 'filled' : ''}}" wx:if="{{ocrResult.sellerName}}">
+            <view class="result-label">销售方</view>
+            <view class="result-value">{{ocrResult.sellerName}}</view>
+          </view>
+          <view class="result-item {{ocrResult.invoiceCode ? 'filled' : ''}}" wx:if="{{ocrResult.invoiceCode}}">
+            <view class="result-label">发票代码</view>
+            <view class="result-value">{{ocrResult.invoiceCode}}</view>
+          </view>
+          <view class="result-item {{ocrResult.invoiceNumber ? 'filled' : ''}}" wx:if="{{ocrResult.invoiceNumber}}">
+            <view class="result-label">发票号码</view>
+            <view class="result-value">{{ocrResult.invoiceNumber}}</view>
+          </view>
+        </view>
+      </view>
+    </block>
 
     <view class="section-card">
       <view class="section-title">发票信息</view>
@@ -432,9 +494,14 @@
     </block>
     <block wx:elif="{{isChatMode}}">
       <view class="secondary-btn" bindtap="chooseMessageFile" wx:if="{{!selectedFile}}">选择文件</view>
-      <view class="primary-btn {{submitting ? 'disabled' : ''}}" bindtap="handleSubmit">
-        {{submitting ? '保存中...' : '保存到票夹'}}
-      </view>
+      <block wx:elif="{{ocrLoading}}">
+        <view class="primary-btn disabled">正在识别...</view>
+      </block>
+      <block wx:else>
+        <view class="primary-btn {{submitting ? 'disabled' : ''}}" bindtap="handleSubmit">
+          {{submitting ? '保存中...' : (ocrResult ? '保存到票夹' : '请等待识别完成')}}
+        </view>
+      </block>
     </block>
     <block wx:else>
       <view class="secondary-btn" data-label="预览识别" bindtap="handleTap">预览识别</view>
