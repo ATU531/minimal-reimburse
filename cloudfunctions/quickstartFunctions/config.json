@@ -1,7 +1,1 @@
-{
-  "permissions": {
-    "openapi": [
-      "wxacode.get"
-    ]
-  }
-}
+{"permissions": {"openapi": ["wxacode.get", "ocr.invoice"]}, "timeout": 20, "memorySize": 256}

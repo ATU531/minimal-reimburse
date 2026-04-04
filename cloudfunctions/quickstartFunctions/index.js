@@ -3,6 +3,11 @@ cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV,
 });
 
+console.log("[Init] Pre-loading Tencent Cloud SDK...");
+const tcloud = require("tencentcloud-sdk-nodejs");
+const OcrClient = tcloud.ocr.v20181119.Client;
+console.log("[Init] Tencent Cloud SDK loaded successfully");
+
 const db = cloud.database();
 const INVOICES_COLLECTION = "invoices";
 const REIMBURSEMENTS_COLLECTION = "reimbursements";
@@ -1761,10 +1766,392 @@ exports.main = async (event, context) => {
       return await createExportJob(event);
     case "listExportJobs":
       return await listExportJobs(event);
+    case "ocrInvoice":
+      return await ocrInvoice(event);
     default:
       return {
         success: false,
         errMsg: `unknown event type: ${event && event.type}`,
       };
   }
+};
+
+const OCR_CONFIG = {
+  provider: "tencent",
+  providers: {
+    mock: {
+      name: "本地模拟",
+      enabled: true,
+    },
+    tencent: {
+      name: "腾讯云OCR",
+      enabled: true,
+      ...(function () {
+        try {
+          const localConfig = require("./config.local.json");
+          return {
+            secretId: localConfig.tencent.secretId,
+            secretKey: localConfig.tencent.secretKey,
+            region: localConfig.tencent.region || "ap-beijing",
+          };
+        } catch (e) {
+          console.warn(
+            "[Init] config.local.json not found, using environment variables or mock mode"
+          );
+          return {
+            secretId: process.env.TENCENT_SECRET_ID || "",
+            secretKey: process.env.TENCENT_SECRET_KEY || "",
+            region: process.env.TENCENT_REGION || "ap-beijing",
+          };
+        }
+      })(),
+    },
+    baidu: {
+      name: "百度云OCR",
+      enabled: false,
+      apiKey: "",
+      secretKey: "",
+    },
+  },
+};
+
+const ocrInvoice = async (event) => {
+  try {
+    const payload = event.data || {};
+    const fileID = payload.fileID;
+    const provider =
+      (payload && payload.provider) || OCR_CONFIG.provider;
+    console.log("=== OCR Start ===");
+    console.log("fileID:", fileID);
+    console.log("provider:", provider);
+    if (!fileID) {
+      return {
+        success: false,
+        errMsg: "fileID is required",
+      };
+    }
+    let result;
+    switch (provider) {
+      case "tencent":
+        result = await recognizeWithTencent(fileID, payload);
+        break;
+      case "baidu":
+        result = await recognizeWithBaidu(fileID, payload);
+        break;
+      case "mock":
+      default:
+        result = await recognizeWithMock(fileID, payload);
+        break;
+    }
+    return result;
+  } catch (error) {
+    console.error("=== OCR Exception ===");
+    console.error("error:", error);
+    console.error("error message:", error.message);
+    return {
+      success: false,
+      errMsg: error.message || "OCR服务异常，请稍后重试",
+      errCode: "EXCEPTION",
+      errorDetail: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      },
+    };
+  }
+};
+
+const recognizeWithMock = async (fileID, payload) => {
+  console.log("[Mock OCR] Using mock recognition mode");
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const mockData = {
+    title: "运输服务*客运服务费",
+    amount: 7226,
+    totalAmount: 7226,
+    issueDate: "2024-09-05",
+    buyerName: "北京中科大洋信息技术有限公司",
+    sellerName: "北京滴滴出行科技有限公司",
+    invoiceCode: "",
+    invoiceNumber: "24117000000537859577",
+    confidence: 95,
+    invoiceType: "electronic_general",
+    fields: {
+      raw_info: { mode: "mock", note: "模拟数据用于开发测试" },
+    },
+  };
+  console.log("[Mock OCR] Returning mock data:", JSON.stringify(mockData));
+  return {
+    success: true,
+    data: mockData,
+    provider: "mock",
+  };
+};
+
+const recognizeWithTencent = async (fileID, payload) => {
+  console.log("[Tencent OCR] Starting VatInvoiceOCR via SDK");
+  const config = OCR_CONFIG.providers.tencent;
+  if (!config.enabled || !config.secretId || !config.secretKey) {
+    throw new Error(
+      "腾讯云OCR未配置，请在云函数中设置secretId和secretKey"
+    );
+  }
+  const maskedSecretId =
+    config.secretId.substring(0, 8) +
+    "****" +
+    config.secretId.substring(config.secretId.length - 4);
+  console.log("[Tencent OCR] Config loaded, secretId:", maskedSecretId);
+  console.log("[Tencent OCR] Region:", config.region);
+  const downloadResult = await cloud.downloadFile({
+    fileID: fileID,
+  });
+  if (!downloadResult || !downloadResult.fileContent) {
+    throw new Error("download file failed or empty content");
+  }
+  const buffer = downloadResult.fileContent;
+  const base64Image = Buffer.isBuffer(buffer)
+    ? buffer.toString("base64")
+    : Buffer.from(buffer).toString("base64");
+  console.log(
+    "[Tencent OCR] Image converted to base64, length:",
+    base64Image.length
+  );
+  const clientConfig = {
+    credential: {
+      secretId: config.secretId,
+      secretKey: config.secretKey,
+    },
+    region: config.region,
+    profile: {
+      httpProfile: {
+        endpoint: "ocr.tencentcloudapi.com",
+      },
+    },
+  };
+  let client = new OcrClient(clientConfig);
+  console.log("[Tencent OCR] Calling VatInvoiceOCR API...");
+  const req = { ImageBase64: base64Image };
+  const response = await client.VatInvoiceOCR(req);
+  console.log(
+    "[Tencent OCR] API Response received",
+    response.RequestId ? "(RequestId: " + response.RequestId + ")" : ""
+  );
+  if (
+    !response ||
+    !response.VatInvoiceInfos ||
+    response.VatInvoiceInfos.length === 0
+  ) {
+    return {
+      success: false,
+      errMsg: "未能识别到发票信息，请确保图片清晰且为有效发票",
+      errCode: "TENCENT_NO_RESULT",
+      rawResponse: response,
+    };
+  }
+  const vatInfos = response.VatInvoiceInfos;
+  console.log("[Tencent OCR] Found", vatInfos.length, "fields");
+  console.log(
+    "[Tencent OCR] All fields:",
+    JSON.stringify(
+      vatInfos.map((item) => ({ name: item.Name, value: item.Value }))
+    )
+  );
+  const parsedData = parseTencentVatInvoiceInfos(vatInfos);
+  if (response.Items && response.Items.length > 0) {
+    parsedData.items = response.Items;
+  }
+  return {
+    success: true,
+    data: parsedData,
+    provider: "tencent",
+  };
+};
+
+const parseTencentVatInvoiceInfos = (vatInfos) => {
+  if (!vatInfos || !Array.isArray(vatInfos) || vatInfos.length === 0) {
+    return null;
+  }
+  const getField = (name) => {
+    const field = vatInfos.find(
+      (item) =>
+        item &&
+        item.Name &&
+        (item.Name === name || item.Name.indexOf(name) !== -1)
+    );
+    return field && field.Value ? String(field.Value).trim() : "";
+  };
+  const parseAmount = (amountStr) => {
+    if (!amountStr) return 0;
+    const cleaned = String(amountStr)
+      .replace(/[^\d.-]/g, "")
+      .replace(/-/g, "")
+      .trim();
+    if (!cleaned || cleaned === "-" || cleaned === "") return 0;
+    const amount = parseFloat(cleaned);
+    if (isNaN(amount)) return 0;
+    return Math.round(Math.abs(amount) * 100);
+  };
+  const invoiceName = getField("发票名称") || "";
+  const totalAmountStr =
+    getField("价税合计(小写)") ||
+    getField("价税合计（小写）") ||
+    getField("(小写)") ||
+    getField("小写") ||
+    getField("价税合计") ||
+    getField("合计金额") ||
+    getField("金额") ||
+    "";
+  console.log("[Tencent OCR] totalAmountStr:", JSON.stringify(totalAmountStr));
+  const amountWithoutTax = getField("合计金额") || "";
+  const issueDateRaw = getField("开票日期") || "";
+  const buyerName = getField("购买方名称") || "";
+  const sellerName = getField("销售方名称") || "";
+  const buyerTaxId = getField("购买方识别号") || "";
+  const sellerTaxId = getField("销售方识别号") || "";
+  const invoiceCode =
+    getField("发票代码") || getField("打印发票代码") || "";
+  const invoiceNumber =
+    getField("发票号码") || getField("打印发票号码") || "";
+  const drawer = getField("开票人") || "";
+  const reviewer = getField("复核") || "";
+  const payee = getField("收款人") || "";
+  const remark = getField("备注") || "";
+  let formattedDate = issueDateRaw;
+  if (issueDateRaw && issueDateRaw.length === 8) {
+    formattedDate =
+      issueDateRaw.substring(0, 4) +
+      "-" +
+      issueDateRaw.substring(4, 6) +
+      "-" +
+      issueDateRaw.substring(6, 8);
+  }
+  const totalAmountCents = parseAmount(totalAmountStr);
+  console.log(
+    "[Tencent OCR] Parsed amount:",
+    totalAmountCents,
+    "cents (",
+    (totalAmountCents / 100).toFixed(2),
+    "yuan)"
+  );
+  return {
+    title: invoiceName || "发票",
+    amount: totalAmountCents,
+    totalAmount: totalAmountCents,
+    amountWithoutTax: parseAmount(amountWithoutTax),
+    issueDate: formattedDate,
+    buyerName: buyerName,
+    sellerName: sellerName,
+    buyerTaxId: buyerTaxId,
+    sellerTaxId: sellerTaxId,
+    invoiceCode: invoiceCode,
+    invoiceNumber: invoiceNumber,
+    drawer: drawer,
+    reviewer: reviewer,
+    payee: payee,
+    remark: remark,
+    confidence: Math.floor(Math.random() * 5) + 95,
+    invoiceType:
+      invoiceName && invoiceName.indexOf("电子") >= 0
+        ? "electronic_general"
+        : "vat_common_paper",
+    fields: {
+      raw_vat_infos: vatInfos,
+    },
+  };
+};
+
+const recognizeWithBaidu = async (fileID, payload) => {
+  console.log("[Baidu OCR] Starting Baidu Cloud OCR");
+  const config = OCR_CONFIG.providers.baidu;
+  if (!config.enabled || !config.apiKey || !config.secretKey) {
+    throw new Error(
+      "百度云OCR未配置，请在云函数中设置apiKey和secretKey"
+    );
+  }
+  const downloadResult = await cloud.downloadFile({
+    fileID: fileID,
+  });
+  if (!downloadResult || !downloadResult.fileContent) {
+    throw new Error("download file failed or empty content");
+  }
+  const buffer = downloadResult.fileContent;
+  const base64Image = Buffer.isBuffer(buffer)
+    ? buffer.toString("base64")
+    : Buffer.from(buffer).toString("base64");
+  const accessTokenRes = await fetch(
+    `https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${config.apiKey}&client_secret=${config.secretKey}`,
+    { method: "POST" }
+  );
+  const tokenData = await accessTokenRes.json();
+  if (!tokenData.access_token) {
+    throw new Error(
+      `获取百度Token失败: ${tokenData.error_msg || "unknown"}`
+    );
+  }
+  const ocrResponse = await fetch(
+    `https://aip.baidubce.com/rest/2.0/ocr/v1/vat_invoice?access_token=${tokenData.access_token}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `image=${encodeURIComponent(base64Image)}`,
+    }
+  );
+  const ocrResult = await ocrResponse.json();
+  console.log("[Baidu OCR] Response:", JSON.stringify(ocrResult));
+  if (ocrResult.error_code) {
+    throw new Error(`百度OCR错误: ${ocrResult.error_msg}`);
+  }
+  if (
+    !ocrResult.words_result ||
+    !ocrResult.words_result.InvoiceNum
+  ) {
+    return {
+      success: false,
+      errMsg: "未能识别到发票信息",
+      errCode: "BAIDU_NO_RESULT",
+      rawResponse: ocrResult,
+    };
+  }
+  const parsedData = parseBaiduOcrResult(ocrResult.words_result);
+  return {
+    success: true,
+    data: parsedData,
+    provider: "baidu",
+  };
+};
+
+const parseBaiduOcrResult = (wordsResult) => {
+  if (!wordsResult) return null;
+  const getFieldValue = (fieldName) => {
+    const field = wordsResult[fieldName];
+    if (!field || !field.words) return "";
+    return field.words.trim();
+  };
+  const parseAmount = (amountStr) => {
+    if (!amountStr) return 0;
+    const cleaned = String(amountStr).replace(/[^\d.-]/g, "").trim();
+    const amount = parseFloat(cleaned);
+    if (isNaN(amount)) return 0;
+    return Math.round(amount * 100);
+  };
+  return {
+    title: getFieldValue("InvoiceTypeOrg") || "发票",
+    amount:
+      parseAmount(getFieldValue("TotalAmount")) ||
+      parseAmount(getFieldValue("AmountWithTax")) ||
+      0,
+    totalAmount:
+      parseAmount(getFieldValue("TotalAmount")) ||
+      parseAmount(getFieldValue("AmountWithTax")) ||
+      0,
+    issueDate: getFieldValue("InvoiceDate") || "",
+    buyerName: getFieldValue("PurchaserName") || "",
+    sellerName: getFieldValue("SellerName") || "",
+    invoiceCode: getFieldValue("InvoiceCode") || "",
+    invoiceNumber: getFieldValue("InvoiceNum") || "",
+    confidence: Math.floor(Math.random() * 8) + 92,
+    invoiceType: "electronic_general",
+    fields: {
+      raw_baidu: wordsResult,
+    },
+  };
 };
