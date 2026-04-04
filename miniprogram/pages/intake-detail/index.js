@@ -129,7 +129,7 @@ Page({
   chooseMessageFile() {
     wx.chooseMessageFile({
       count: 1,
-      type: "file",
+      type: "all",
       success: (res) => {
         const file = res.tempFiles[0];
         if (!file) {
