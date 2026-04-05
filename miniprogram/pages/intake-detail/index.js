@@ -44,7 +44,7 @@ Page({
       card: {
         title: "微信卡包同步",
         subtitle: "导入卡包中的电子发票并补齐票据字段",
-        guide: "适合同步已开具完成的电子票，减少二次上传动作。",
+        guide: "适合同步已开具完成的电子票，减少二次上传动作。（需企业主体认证）",
         actionLabel: "同步卡包",
         action: "syncCard",
       },
@@ -131,6 +131,15 @@ Page({
       icon: "none",
     });
   },
+  chooseInvoiceFromCard() {
+    wx.showModal({
+      title: "功能暂未开放",
+      content: "微信卡包发票同步功能需要企业主体认证，个人小程序暂不支持。后续开通权限后可使用。",
+      showCancel: false,
+      confirmText: "我知道了",
+    });
+  },
+  /*
   chooseInvoiceFromCard() {
     wx.showLoading({
       title: "正在打开卡包...",
@@ -305,6 +314,7 @@ Page({
         });
       });
   },
+  */
   chooseMessageFile() {
     wx.chooseMessageFile({
       count: 1,
