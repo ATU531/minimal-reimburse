@@ -28,7 +28,7 @@
     <view class="section-header">
       <view>
         <view class="section-title">发票录入</view>
-        <view class="section-desc">覆盖你当前规划的主流入口，优先做成简单清晰的静态信息架构。</view>
+        <view class="section-desc">选择一种方式快速录入发票信息</view>
       </view>
     </view>
     <view class="entry-grid">

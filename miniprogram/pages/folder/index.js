@@ -408,6 +408,10 @@ Page({
         });
       return;
     }
+    if (label === "导出 PDF") {
+      this.exportSelectedPdf();
+      return;
+    }
     if (page) {
       wx.navigateTo({
         url: page,
@@ -418,5 +422,79 @@ Page({
       title: label,
       icon: "none",
     });
+  },
+  exportSelectedPdf() {
+    const selectedInvoices = this.data.invoices.filter((item) => item.selected);
+    if (!selectedInvoices.length) {
+      wx.showToast({ title: "请先勾选要导出的发票", icon: "none" });
+      return;
+    }
+    if (selectedInvoices.some((item) => String(item.id).startsWith("local-"))) {
+      wx.showToast({ title: "本地草稿无法导出，请等待同步", icon: "none" });
+      return;
+    }
+    const invoiceIds = selectedInvoices.map((item) => item.id);
+    wx.showLoading({ title: "正在生成PDF...", mask: true });
+    wx.cloud
+      .callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "generateExportPdf",
+          invoiceIds: invoiceIds,
+        },
+        timeout: 30000,
+      })
+      .then((res) => {
+        wx.hideLoading();
+        const result = res.result;
+        if (!result || !result.success || !result.data) {
+          throw new Error((result && result.errMsg) || "生成PDF失败");
+        }
+        const { tempFileURL, fileName } = result.data;
+        console.log("[Export PDF] tempFileURL:", tempFileURL);
+        wx.downloadFile({
+          url: tempFileURL,
+          filePath: `${wx.env.USER_DATA_PATH}/${fileName}`,
+          success: (downloadRes) => {
+            if (downloadRes.statusCode === 200) {
+              wx.showActionSheet({
+                itemList: ["打开PDF", "转发到聊天"],
+                success: (actionRes) => {
+                  if (actionRes.tapIndex === 0) {
+                    wx.openDocument({
+                      filePath: downloadRes.filePath,
+                      showMenu: true,
+                      fileType: "pdf",
+                      fail: () => {
+                        wx.showToast({ title: "打开PDF失败", icon: "none" });
+                      },
+                    });
+                  } else if (actionRes.tapIndex === 1) {
+                    wx.shareFileMessage({
+                      filePath: downloadRes.filePath,
+                      fileName: fileName,
+                      fail: () => {
+                        wx.showToast({ title: "转发失败", icon: "none" });
+                      },
+                    });
+                  }
+                },
+              });
+            }
+          },
+          fail: () => {
+            wx.showToast({ title: "下载PDF失败", icon: "none" });
+          },
+        });
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        console.error("[Export PDF] Error:", err);
+        wx.showToast({
+          title: (err.message || "导出失败").substring(0, 20),
+          icon: "none",
+          duration: 3000,
+        });
+      });
   },
 });

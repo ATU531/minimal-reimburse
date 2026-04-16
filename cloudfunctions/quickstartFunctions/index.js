@@ -1846,6 +1846,161 @@ const parseWechatCardInvoice = (info) => {
   }
   return Object.keys(result).length > 0 ? result : null;
 };
+
+const generateExportPdf = async (event) => {
+  const invoiceIds = event.invoiceIds || [];
+  if (!invoiceIds.length) {
+    return { success: false, errMsg: "请选择要导出的发票" };
+  }
+  console.log("[Export PDF] Generating for invoices:", invoiceIds);
+  const { OPENID: openid } = cloud.getWXContext();
+  const invoicesResult = await db
+    .collection(INVOICES_COLLECTION)
+    .where({
+      _id: db.command.in(invoiceIds),
+      openid,
+      deletedAt: null,
+    })
+    .get();
+  if (!invoicesResult.data.length) {
+    return { success: false, errMsg: "未找到发票数据" };
+  }
+  const invoices = invoicesResult.data;
+  console.log("[Export PDF] Found", invoices.length, "invoices");
+
+  const attachmentFileIDs = [];
+  invoices.forEach((inv) => {
+    if (Array.isArray(inv.attachments)) {
+      inv.attachments.forEach((att) => {
+        if (att.fileID && att.type === "image") {
+          attachmentFileIDs.push(att.fileID);
+        }
+      });
+    }
+  });
+
+  console.log("[Export PDF] Attachment fileIDs:", attachmentFileIDs.length);
+
+  const imageBuffers = [];
+  if (attachmentFileIDs.length) {
+    const tempUrlResult = await cloud.getTempFileURL({
+      fileList: attachmentFileIDs,
+    });
+    for (const fileItem of tempUrlResult.fileList) {
+      if (fileItem.tempFileURL) {
+        try {
+          const https = require("https");
+          const http = require("http");
+          const url = fileItem.tempFileURL;
+          const mod = url.startsWith("https") ? https : http;
+          const imgBuf = await new Promise((resolve, reject) => {
+            mod.get(url, (res) => {
+              const chunks = [];
+              res.on("data", (c) => chunks.push(c));
+              res.on("end", () => resolve(Buffer.concat(chunks)));
+              res.on("error", reject);
+            }).on("error", reject);
+          });
+          imageBuffers.push(imgBuf);
+          console.log("[Export PDF] Downloaded image, size:", imgBuf.length);
+        } catch (e) {
+          console.error("[Export PDF] Download image failed:", e.message);
+        }
+      }
+    }
+  }
+
+  const PDFDocument = require("pdfkit");
+  const chunks = [];
+  const doc = new PDFDocument({
+    size: "A4",
+    margins: { top: 30, bottom: 30, left: 30, right: 30 },
+    autoFirstPage: false,
+    info: {
+      Title: "发票导出 - 轻票夹",
+      Author: "轻票夹小程序",
+    },
+  });
+  doc.on("data", (chunk) => chunks.push(chunk));
+  const pdfPromise = new Promise((resolve, reject) => {
+    doc.on("end", resolve);
+    doc.on("error", reject);
+  });
+
+  const pageW = 595.28;
+  const pageH = 841.89;
+  const margin = 30;
+  const gap = 20;
+  const usableW = pageW - margin * 2;
+  const halfH = (pageH - margin * 2 - gap) / 2;
+
+  if (imageBuffers.length > 0) {
+    for (let i = 0; i < imageBuffers.length; i += 2) {
+      doc.addPage({ size: "A4", margins: { top: margin, bottom: margin, left: margin, right: margin } });
+
+      const topImg = imageBuffers[i];
+      if (topImg) {
+        doc.image(topImg, margin, margin, {
+          fit: [usableW, halfH],
+          align: "center",
+          valign: "center",
+        });
+      }
+
+      if (i + 1 < imageBuffers.length) {
+        const bottomImg = imageBuffers[i + 1];
+        const bottomY = margin + halfH + gap;
+        doc.image(bottomImg, margin, bottomY, {
+          fit: [usableW, halfH],
+          align: "center",
+          valign: "center",
+        });
+      }
+    }
+  } else {
+    doc.addPage({ size: "A4" });
+    doc.fontSize(16).font("Helvetica").fillColor("#999999");
+    doc.text("No invoice images found.", { align: "center" });
+    doc.moveDown(1);
+    doc.fontSize(12).text("Attachments were not saved when these invoices were created.", { align: "center" });
+    doc.moveDown(0.5);
+    doc.text("New invoices with OCR recognition will include images.", { align: "center" });
+  }
+
+  doc.end();
+  await pdfPromise;
+  const pdfBuffer = Buffer.concat(chunks);
+  console.log("[Export PDF] Buffer size:", pdfBuffer.length);
+
+  const timestamp = Date.now();
+  const cloudPath = `exports/${openid}/${timestamp}-invoices.pdf`;
+  const uploadResult = await cloud.uploadFile({
+    cloudPath: cloudPath,
+    fileContent: pdfBuffer,
+  });
+  console.log("[Export PDF] Uploaded, fileID:", uploadResult.fileID);
+
+  const tempUrlResult = await cloud.getTempFileURL({
+    fileList: [uploadResult.fileID],
+  });
+  const tempUrl = tempUrlResult.fileList[0] && tempUrlResult.fileList[0].tempFileURL;
+  console.log("[Export PDF] Temp URL obtained");
+
+  await markInvoicesAsExported(openid, invoiceIds);
+
+  return {
+    success: true,
+    data: {
+      fileID: uploadResult.fileID,
+      tempFileURL: tempUrl,
+      fileName: `invoices-${timestamp}.pdf`,
+      fileSize: pdfBuffer.length,
+      invoiceCount: invoices.length,
+      imageCount: imageBuffers.length,
+    },
+  };
+};
+
 // 云函数入口函数
 exports.main = async (event, context) => {
   switch (event.type) {
@@ -1901,6 +2056,8 @@ exports.main = async (event, context) => {
       return await ocrInvoice(event);
     case "getInvoiceInfo":
       return await getInvoiceInfo(event);
+    case "generateExportPdf":
+      return await generateExportPdf(event);
     default:
       return {
         success: false,

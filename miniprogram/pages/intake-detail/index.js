@@ -5,11 +5,14 @@ Page({
     currentSource: null,
     isChatMode: false,
     isOcrMode: false,
+    isLocalMode: false,
+    isAlbumMode: false,
     selectedFile: null,
     ocrImage: null,
     ocrResult: null,
     ocrProvider: "",
     ocrLoading: false,
+    uploadedFileID: "",
     submitting: false,
     invoiceTypeOptions: [
       { label: "电子普票", value: "vat_common_electronic" },
@@ -53,6 +56,7 @@ Page({
         subtitle: "批量导入 PDF、图片或压缩包中的票据文件",
         guide: "适合财务按月整理归档文件，再做统一识别与校验。",
         actionLabel: "选择本地文件",
+        action: "chooseLocalFile",
       },
       scan: {
         title: "扫码录入",
@@ -65,6 +69,7 @@ Page({
         subtitle: "从相册中选择票据照片并进入识别流程",
         guide: "适合差旅结束后一次性补录手机里保存的发票图片。",
         actionLabel: "选择相册照片",
+        action: "chooseAlbum",
       },
       ocr: {
         title: "智能识别",
@@ -102,10 +107,14 @@ Page({
     const currentSource = this.data.sources[source] || this.data.sources.ocr;
     const isChatMode = source === "chat";
     const isOcrMode = source === "ocr";
+    const isLocalMode = source === "local";
+    const isAlbumMode = source === "album";
     this.setData({
       currentSource,
       isChatMode,
       isOcrMode,
+      isLocalMode,
+      isAlbumMode,
     });
   },
   getInvoiceTypeLabel(invoiceType) {
@@ -120,6 +129,14 @@ Page({
       this.chooseInvoiceFromCard();
       return;
     }
+    if (action === "chooseLocalFile") {
+      this.chooseLocalFile();
+      return;
+    }
+    if (action === "chooseAlbum") {
+      this.chooseFromAlbum();
+      return;
+    }
     if (page) {
       wx.navigateTo({
         url: page,
@@ -130,6 +147,153 @@ Page({
       title: label,
       icon: "none",
     });
+  },
+  chooseLocalFile() {
+    const items = ["从相册选择图片", "选择本地PDF文件"];
+    wx.showActionSheet({
+      itemList: items,
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          this.chooseLocalImage();
+        } else if (res.tapIndex === 1) {
+          this.chooseLocalPdf();
+        }
+      },
+    });
+  },
+  chooseLocalImage() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ["image"],
+      sourceType: ["album"],
+      success: (res) => {
+        const tempFilePath = res.tempFiles[0].tempFilePath;
+        const fileSize = res.tempFiles[0].size;
+        this.setData({
+          selectedFile: {
+            name: "本地图片_" + new Date().toLocaleTimeString("zh-CN"),
+            size: Math.round(fileSize / 1024),
+            path: tempFilePath,
+            type: "image",
+            fileType: "image",
+            time: new Date().toLocaleString("zh-CN"),
+          },
+        });
+        this.processLocalFileOcr(tempFilePath, true);
+      },
+      fail: (err) => {
+        if (err.errMsg && err.errMsg.includes("cancel")) return;
+        wx.showToast({ title: "选择图片失败", icon: "none" });
+      },
+    });
+  },
+  chooseLocalPdf() {
+    wx.chooseMessageFile({
+      count: 1,
+      type: "file",
+      extension: ["pdf"],
+      success: (res) => {
+        const file = res.tempFiles[0];
+        if (!file) {
+          wx.showToast({ title: "未选择文件", icon: "none" });
+          return;
+        }
+        const fileName = file.name || "";
+        this.setData({
+          selectedFile: {
+            name: fileName,
+            size: Math.round(file.size / 1024),
+            path: file.path,
+            type: "file",
+            fileType: "pdf",
+            time: new Date().toLocaleString("zh-CN"),
+          },
+        });
+        if (!this.data.form.title) {
+          const nameWithoutExt = fileName.replace(/\.pdf$/i, "");
+          if (nameWithoutExt.trim()) {
+            this.setData({ "form.title": nameWithoutExt });
+          }
+        }
+        this.processLocalFileOcr(file.path, false);
+      },
+      fail: (err) => {
+        if (err.errMsg && err.errMsg.includes("cancel")) return;
+        wx.showToast({ title: "选择PDF文件失败", icon: "none" });
+      },
+    });
+  },
+  processLocalFileOcr(filePath, isImage) {
+    this.setData({
+      ocrLoading: true,
+      ocrResult: null,
+      ocrImage: isImage ? filePath : null,
+    });
+    wx.showLoading({
+      title: "正在识别发票...",
+      mask: true,
+    });
+    const cloudPath = `local-invoices/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}${isImage ? ".jpg" : ".pdf"}`;
+    wx.cloud
+      .uploadFile({
+        cloudPath: cloudPath,
+        filePath: filePath,
+      })
+      .then((res) => {
+        console.log("[Local File OCR] Uploaded, fileID:", res.fileID);
+        this.setData({ uploadedFileID: res.fileID });
+        return wx.cloud.callFunction({
+          name: "quickstartFunctions",
+          data: {
+            type: "ocrInvoice",
+            data: { fileID: res.fileID },
+          },
+          timeout: 25000,
+        });
+      })
+      .then((response) => {
+        wx.hideLoading();
+        this.setData({ ocrLoading: false });
+        const result = response && response.result;
+        console.log("[Local File OCR] Response:", JSON.stringify(result));
+        if (!result || result.success === false) {
+          const errorMsg = (result && result.errMsg) || "OCR识别失败";
+          throw new Error(errorMsg);
+        }
+        const ocrData = result.data || {};
+        const ocrProvider = result.provider || "unknown";
+        const displayOcrData = this.addDisplayFields(ocrData);
+        this.setData({
+          ocrResult: displayOcrData,
+          ocrProvider: ocrProvider,
+        });
+        this.fillFormWithOcrResult(ocrData);
+        if (ocrProvider === "mock") {
+          wx.showModal({
+            title: "提示",
+            content: "当前使用模拟数据模式。如需真实OCR识别，请配置腾讯云OCR服务。",
+            showCancel: false,
+            confirmText: "我知道了",
+          });
+        } else {
+          wx.showToast({ title: "识别成功", icon: "success" });
+        }
+      })
+      .catch((error) => {
+        wx.hideLoading();
+        this.setData({ ocrLoading: false });
+        console.error("[Local File OCR] Error:", error);
+        let displayMsg = "识别失败，请手动填写";
+        if (error && error.message) {
+          displayMsg =
+            error.message.length > 20
+              ? error.message.substring(0, 20) + "..."
+              : error.message;
+        }
+        wx.showToast({ title: displayMsg, icon: "none", duration: 3000 });
+      });
   },
   chooseInvoiceFromCard() {
     wx.showModal({
@@ -404,6 +568,7 @@ Page({
       })
       .then((res) => {
         console.log("[Chat OCR] File uploaded, fileID:", res.fileID);
+        this.setData({ uploadedFileID: res.fileID });
         return wx.cloud.callFunction({
           name: "quickstartFunctions",
           data: {
@@ -554,6 +719,7 @@ Page({
       })
       .then((res) => {
         console.log("[OCR] Image uploaded, fileID:", res.fileID);
+        this.setData({ uploadedFileID: res.fileID });
         return wx.cloud.callFunction({
           name: "quickstartFunctions",
           data: {
@@ -894,9 +1060,23 @@ Page({
       });
       return;
     }
+    if (this.data.isLocalMode && !this.data.selectedFile) {
+      wx.showToast({
+        title: "请先选择本地文件",
+        icon: "none",
+      });
+      return;
+    }
     if (this.data.isOcrMode && !this.data.ocrImage) {
       wx.showToast({
         title: "请先拍照或选择图片",
+        icon: "none",
+      });
+      return;
+    }
+    if (this.data.isAlbumMode && !this.data.ocrImage) {
+      wx.showToast({
+        title: "请先选择相册照片",
         icon: "none",
       });
       return;
@@ -966,6 +1146,7 @@ Page({
         },
         ocrStatus: hasOcrResult ? "success" : "skipped",
         verifyStatus: hasOcrResult ? "verified" : "unverified",
+        attachments: this.data.uploadedFileID ? [{ fileID: this.data.uploadedFileID, type: selectedFile.fileType || "image" }] : [],
       };
       sourceInfo = {
         sourceType: "chat",
@@ -995,12 +1176,83 @@ Page({
         },
         ocrStatus: "success",
         verifyStatus: "verified",
+        attachments: this.data.uploadedFileID ? [{ fileID: this.data.uploadedFileID, type: "image" }] : [],
       };
       sourceInfo = {
         sourceType: "ocr",
         meta: this.data.ocrResult
           ? `置信度 ${Math.round(this.data.ocrResult.confidence || 0)}%`
           : "OCR识别完成",
+      };
+    } else if (this.data.isLocalMode) {
+      const selectedFile = this.data.selectedFile;
+      const ocrResult = this.data.ocrResult || {};
+      const hasOcrResult =
+        Object.keys(ocrResult).length > 0 && ocrResult.title;
+      requestPayload = {
+        title: form.title.trim(),
+        amount: Math.round(Number(form.amount) * 100),
+        totalAmount: Math.round(Number(form.amount) * 100),
+        issueDate: form.issueDate,
+        buyerName: form.buyerName.trim(),
+        sellerName: form.sellerName.trim(),
+        invoiceCode: form.invoiceCode.trim(),
+        invoiceNumber: form.invoiceNumber.trim(),
+        category: form.category.trim(),
+        remark: form.remark.trim(),
+        invoiceType: form.invoiceType,
+        sourceType: "local",
+        sourceMeta: {
+          channel: "local_file",
+          fileType: selectedFile.fileType || "unknown",
+          fileName: selectedFile.name,
+          fileSize: selectedFile.size,
+          ocrConfidence: hasOcrResult
+            ? ocrResult.confidence || 0
+            : undefined,
+        },
+        ocrStatus: hasOcrResult ? "success" : "skipped",
+        verifyStatus: hasOcrResult ? "verified" : "unverified",
+        attachments: this.data.uploadedFileID ? [{ fileID: this.data.uploadedFileID, type: selectedFile.fileType || "image" }] : [],
+      };
+      sourceInfo = {
+        sourceType: "local",
+        meta: hasOcrResult
+          ? `${selectedFile.name} · OCR识别完成`
+          : `${selectedFile.name} · ${selectedFile.time}`,
+      };
+    } else if (this.data.isAlbumMode) {
+      const ocrResult = this.data.ocrResult || {};
+      const hasOcrResult =
+        Object.keys(ocrResult).length > 0 && ocrResult.title;
+      requestPayload = {
+        title: form.title.trim(),
+        amount: Math.round(Number(form.amount) * 100),
+        totalAmount: Math.round(Number(form.amount) * 100),
+        issueDate: form.issueDate,
+        buyerName: form.buyerName.trim(),
+        sellerName: form.sellerName.trim(),
+        invoiceCode: form.invoiceCode.trim(),
+        invoiceNumber: form.invoiceNumber.trim(),
+        category: form.category.trim(),
+        remark: form.remark.trim(),
+        invoiceType: form.invoiceType,
+        sourceType: "album",
+        sourceMeta: {
+          channel: "album_import",
+          ocrConfidence: hasOcrResult
+            ? ocrResult.confidence || 0
+            : undefined,
+        },
+        ocrStatus: hasOcrResult ? "success" : "skipped",
+        verifyStatus: hasOcrResult ? "verified" : "unverified",
+        attachments: this.data.uploadedFileID ? [{ fileID: this.data.uploadedFileID, type: "image" }] : [],
+      };
+      sourceInfo = {
+        sourceType: "album",
+        meta: hasOcrResult
+          ? `相册导入 · OCR识别完成`
+          : "相册导入",
       };
     } else {
       requestPayload = {

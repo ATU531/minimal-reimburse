@@ -9,20 +9,6 @@ Page({
         page: "/pages/intake-detail/index?source=chat",
       },
       {
-        id: "card",
-        title: "微信卡包",
-        short: "卡",
-        desc: "同步卡包中的电子发票",
-        page: "/pages/intake-detail/index?source=card",
-      },
-      {
-        id: "local",
-        title: "本地文件",
-        short: "文",
-        desc: "导入 PDF、图片或压缩包中的票据",
-        page: "/pages/intake-detail/index?source=local",
-      },
-      {
         id: "scan",
         title: "扫码录入",
         short: "扫",
@@ -49,13 +35,6 @@ Page({
         short: "填",
         desc: "手动补录金额、抬头、税号等信息",
         page: "/pages/manual-entry/index",
-      },
-      {
-        id: "more",
-        title: "更多方式",
-        short: "···",
-        desc: "预留邮件转发、批量导入等扩展入口",
-        page: "/pages/intake-detail/index?source=more",
       },
     ],
     featureCards: [
