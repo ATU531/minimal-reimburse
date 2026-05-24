@@ -42,13 +42,14 @@ assertIncludes(appWxss, "Noto Sans SC", "global wxss");
 assertIncludes(appWxss, "#F4F7FB", "global wxss");
 
 const homeWxml = read("miniprogram", "pages", "index", "index.wxml");
+const homeJs = read("miniprogram", "pages", "index", "index.js");
 const homeWxss = read("miniprogram", "pages", "index", "index.wxss");
 assertIncludes(homeWxml, "home-hero", "home wxml");
 assertIncludes(homeWxml, "核心服务", "home wxml");
-assertIncludes(homeWxml, "ui-camera.svg", "home wxml");
-assertIncludes(homeWxml, "ui-chat.svg", "home wxml");
-assertIncludes(homeWxml, "ui-gallery.svg", "home wxml");
-assertIncludes(homeWxml, "ui-edit.svg", "home wxml");
+assertIncludes(homeJs, "ui-camera.svg", "home js");
+assertIncludes(homeJs, "ui-chat.svg", "home js");
+assertIncludes(homeJs, "ui-gallery.svg", "home js");
+assertIncludes(homeJs, "ui-edit.svg", "home js");
 assertIncludes(homeWxss, "linear-gradient(135deg, #1e1b4b", "home wxss");
 assertIncludes(homeWxss, "section-marker", "home wxss");
 

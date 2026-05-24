@@ -1,5 +1,4 @@
 <view class="home-page">
-  <!-- ui-camera.svg ui-chat.svg ui-gallery.svg ui-edit.svg -->
   <view class="home-hero">
     <view class="hero-glow hero-glow-large"></view>
     <view class="hero-glow hero-glow-small"></view>
