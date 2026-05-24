@@ -6,6 +6,7 @@ Page({
     showFilterPanel: false,
     searchKeyword: "",
     selectedCount: 0,
+    selectedInvoiceIds: [],
     loading: false,
     syncingLocalDrafts: false,
     allInvoices: [],
@@ -195,15 +196,11 @@ Page({
     const localDrafts = wx.getStorageSync(LOCAL_INVOICES_STORAGE_KEY) || [];
     return localDrafts.map((item) => this.normalizeLocalInvoice(item));
   },
-  getSelectedInvoiceIdMap() {
+  getSelectedInvoiceIdMap(selectedInvoiceIds = this.data.selectedInvoiceIds) {
     const selectedIdMap = {};
-    [...(this.data.allInvoices || []), ...(this.data.invoices || [])].forEach(
-      (item) => {
-        if (item.selected) {
-          selectedIdMap[item.id] = true;
-        }
-      }
-    );
+    (selectedInvoiceIds || []).forEach((id) => {
+      selectedIdMap[id] = true;
+    });
     return selectedIdMap;
   },
   applySelectedState(invoices, selectedIdMap) {
@@ -409,26 +406,22 @@ Page({
   },
   toggleInvoice(e) {
     const currentId = e.currentTarget.dataset.id;
-    const invoices = this.data.invoices.map((item) => {
-      if (item.id === currentId) {
-        return Object.assign({}, item, {
-          selected: !item.selected,
-        });
-      }
-      return item;
-    });
-    const allInvoices = this.data.allInvoices.map((item) => {
-      if (item.id === currentId) {
-        return Object.assign({}, item, {
-          selected: !item.selected,
-        });
-      }
-      return item;
-    });
+    const currentSelectedIds = this.data.selectedInvoiceIds || [];
+    const isSelected = currentSelectedIds.includes(currentId);
+    const selectedInvoiceIds = isSelected
+      ? currentSelectedIds.filter((id) => id !== currentId)
+      : currentSelectedIds.concat(currentId);
+    const selectedIdMap = this.getSelectedInvoiceIdMap(selectedInvoiceIds);
+    const invoices = this.applySelectedState(this.data.invoices, selectedIdMap);
+    const allInvoices = this.applySelectedState(
+      this.data.allInvoices,
+      selectedIdMap
+    );
     const selectedCount = invoices.filter((item) => item.selected).length;
     this.setData({
       invoices,
       allInvoices,
+      selectedInvoiceIds,
       selectedCount,
       summaryCards: this.buildSummaryCards(allInvoices, selectedCount),
     });
