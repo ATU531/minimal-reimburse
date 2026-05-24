@@ -69,15 +69,36 @@ Page({
       icon: "none",
     });
   },
+  getQueryValue(query, targetKey) {
+    if (!query) {
+      return "";
+    }
+    const safeDecode = (value) => {
+      try {
+        return decodeURIComponent(value);
+      } catch (e) {
+        return value;
+      }
+    };
+    const parts = query.split("&");
+    for (let i = 0; i < parts.length; i += 1) {
+      const part = parts[i];
+      const separatorIndex = part.indexOf("=");
+      const rawKey = separatorIndex === -1 ? part : part.slice(0, separatorIndex);
+      const rawValue = separatorIndex === -1 ? "" : part.slice(separatorIndex + 1);
+      if (safeDecode(rawKey) === targetKey) {
+        return safeDecode(rawValue);
+      }
+    }
+    return "";
+  },
   handleFeatureTap(e) {
     const { action, page, label } = e.currentTarget.dataset;
     if (action === "switchTab" && page) {
-      const [tabPath, query = ""] = page.split("?");
-      const filterPair = query
-        .split("&")
-        .map((pair) => pair.split("="))
-        .find(([key]) => decodeURIComponent(key || "") === "filter");
-      const filter = filterPair ? decodeURIComponent(filterPair[1] || "") : "";
+      const queryIndex = page.indexOf("?");
+      const tabPath = queryIndex === -1 ? page : page.slice(0, queryIndex);
+      const query = queryIndex === -1 ? "" : page.slice(queryIndex + 1);
+      const filter = this.getQueryValue(query, "filter");
       if (filter) {
         wx.setStorageSync("folderDefaultFilter", filter);
       }
