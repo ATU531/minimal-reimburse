@@ -195,6 +195,24 @@ Page({
     const localDrafts = wx.getStorageSync(LOCAL_INVOICES_STORAGE_KEY) || [];
     return localDrafts.map((item) => this.normalizeLocalInvoice(item));
   },
+  getSelectedInvoiceIdMap() {
+    const selectedIdMap = {};
+    [...(this.data.allInvoices || []), ...(this.data.invoices || [])].forEach(
+      (item) => {
+        if (item.selected) {
+          selectedIdMap[item.id] = true;
+        }
+      }
+    );
+    return selectedIdMap;
+  },
+  applySelectedState(invoices, selectedIdMap) {
+    return invoices.map((item) =>
+      Object.assign({}, item, {
+        selected: Boolean(selectedIdMap[item.id]),
+      })
+    );
+  },
   mergeInvoices(remoteInvoices, localInvoices) {
     const mergedMap = {};
     [...localInvoices, ...remoteInvoices].forEach((item) => {
@@ -301,11 +319,16 @@ Page({
           remoteInvoices,
           this.getLocalDraftInvoices()
         );
+        const selectedIdMap = this.getSelectedInvoiceIdMap();
+        const invoicesWithSelection = this.applySelectedState(
+          mergedInvoices,
+          selectedIdMap
+        );
         this.setData({
-          allInvoices: mergedInvoices,
+          allInvoices: invoicesWithSelection,
           loading: false,
         });
-        this.applyFilter(this.data.activeFilter, mergedInvoices);
+        this.applyFilter(this.data.activeFilter, invoicesWithSelection);
       })
       .catch(() => {
         const fallbackInvoices = this.data.invoices.map((item) =>
@@ -323,11 +346,16 @@ Page({
           fallbackInvoices,
           this.getLocalDraftInvoices()
         );
+        const selectedIdMap = this.getSelectedInvoiceIdMap();
+        const invoicesWithSelection = this.applySelectedState(
+          mergedInvoices,
+          selectedIdMap
+        );
         this.setData({
-          allInvoices: mergedInvoices,
+          allInvoices: invoicesWithSelection,
           loading: false,
         });
-        this.applyFilter(this.data.activeFilter, mergedInvoices);
+        this.applyFilter(this.data.activeFilter, invoicesWithSelection);
         wx.showToast({
           title: "已展示本地票夹数据",
           icon: "none",
