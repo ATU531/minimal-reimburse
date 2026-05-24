@@ -84,7 +84,7 @@ Page({
       reimburseStatus: "unreimbursed",
       printStatus: "unprinted",
       exportStatus: "none",
-      tags: ["待核验", "可导出"],
+      tags: ["可导出"],
       timeline: [
         {
           title: "保存到本地票夹",

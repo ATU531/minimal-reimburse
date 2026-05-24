@@ -5,7 +5,7 @@
         <image class="search-icon" src="/images/icons/ui-search.svg" mode="aspectFit"></image>
         <input class="search-input" placeholder="搜索发票名称、抬头、金额..." value="{{searchKeyword}}" bindinput="handleSearchInput" />
       </view>
-      <view class="filter-trigger" bindtap="toggleFilterPanel">筛选</view>
+      <view class="filter-trigger" bindtap="refreshCurrentFilter">筛选</view>
     </view>
     <view class="filter-tabs">
       <view
@@ -18,30 +18,6 @@
       >
         {{item.label}}
       </view>
-    </view>
-  </view>
-
-  <view class="filter-panel-mask" wx:if="{{showFilterPanel}}" bindtap="closeFilterPanel"></view>
-  <view class="filter-panel" wx:if="{{showFilterPanel}}">
-    <view class="filter-panel-header">
-      <view class="filter-panel-title">票夹筛选</view>
-      <view class="filter-panel-close" bindtap="closeFilterPanel">关闭</view>
-    </view>
-    <view class="filter-panel-options">
-      <view
-        class="filter-panel-option {{activeFilter === item.id ? 'filter-panel-option-active' : ''}}"
-        wx:for="{{filters}}"
-        wx:key="id"
-        wx:for-item="item"
-        data-id="{{item.id}}"
-        bindtap="applyPanelFilter"
-      >
-        {{item.label}}
-      </view>
-    </view>
-    <view class="filter-panel-actions">
-      <view class="filter-panel-reset" bindtap="resetAllFilters">重置条件</view>
-      <view class="filter-panel-confirm" bindtap="closeFilterPanel">完成</view>
     </view>
   </view>
 

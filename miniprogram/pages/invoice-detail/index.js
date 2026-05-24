@@ -16,13 +16,13 @@ Page({
       buyer: "杭州云行信息技术有限公司",
       seller: "上海云联数字科技有限公司",
       source: "智能识别",
-      statusTags: ["待核验", "可导出"],
+      statusTags: ["可导出"],
       hasOriginalAttachment: true,
       attachmentTypes: ["image"],
     },
     timeline: [
       { title: "导入票夹", meta: "今天 10:26 · 智能识别" },
-      { title: "完成 OCR 校验", meta: "今天 10:28 · 字段已识别" },
+      { title: "完成 OCR 识别", meta: "今天 10:28 · 字段已识别" },
       { title: "等待导出归档", meta: "当前状态" },
     ],
   },
@@ -39,15 +39,28 @@ Page({
     return `¥${(Number(amountInCents || 0) / 100).toFixed(2)}`;
   },
   filterVisibleTags(tags) {
-    const hiddenTags = ["未报销", "报销中", "已报销", "未打印", "已打印"];
+    const hiddenTags = [
+      "已核验",
+      "待核验",
+      "核验失败",
+      "未报销",
+      "报销中",
+      "已报销",
+      "未打印",
+      "已打印",
+    ];
     return (tags || []).filter((tag) => !hiddenTags.includes(tag));
   },
   normalizeTimeline(timeline) {
     return (timeline || this.data.timeline).map((item) => ({
       title: String(item.title || "")
         .replace("等待加入报销单", "等待导出归档")
-        .replace("已完成报销", "已导出归档"),
-      meta: String(item.meta || "").replace("报销", "归档"),
+        .replace("已完成报销", "已导出归档")
+        .replace("完成 OCR 校验", "完成 OCR 识别")
+        .replace("待 OCR 校验", "待 OCR 识别"),
+      meta: String(item.meta || "")
+        .replace("可继续核验与报销", "可继续导出与归档")
+        .replace("报销", "归档"),
     }));
   },
   applyInvoiceDetail(invoice, timeline) {

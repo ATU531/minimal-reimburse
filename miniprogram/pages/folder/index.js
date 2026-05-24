@@ -3,7 +3,6 @@ const LOCAL_INVOICES_STORAGE_KEY = "localDraftInvoices";
 Page({
   data: {
     activeFilter: "all",
-    showFilterPanel: false,
     searchKeyword: "",
     selectedCount: 0,
     selectedInvoiceIds: [],
@@ -16,8 +15,8 @@ Page({
       { id: "ready", label: "可导出" },
     ],
     summaryCards: [
-      { label: "待整理", value: "18" },
-      { label: "本月金额", value: "¥9,860" },
+      { label: "票据数", value: "0" },
+      { label: "合计金额", value: "¥0.00" },
       { label: "已选待导", value: "0" },
     ],
     invoices: [
@@ -34,7 +33,7 @@ Page({
         tags: ["已识别", "有原票"],
         totalAmount: 26800,
         amountInCents: 26800,
-        verifyStatus: "verified",
+        verifyStatus: "unverified",
         reimburseStatus: "unreimbursed",
         printStatus: "unprinted",
         exportStatus: "none",
@@ -53,7 +52,7 @@ Page({
         source: "智能识别",
         typeIcon: "/images/icons/ui-pdf.svg",
         owner: "杭州云行信息技术有限公司",
-        tags: ["待核验", "可导出"],
+        tags: ["可导出"],
         totalAmount: 398000,
         amountInCents: 398000,
         verifyStatus: "unverified",
@@ -78,7 +77,7 @@ Page({
         tags: ["已导出", "已归档"],
         totalAmount: 18650,
         amountInCents: 18650,
-        verifyStatus: "verified",
+        verifyStatus: "unverified",
         reimburseStatus: "unreimbursed",
         printStatus: "unprinted",
         exportStatus: "exported",
@@ -110,30 +109,37 @@ Page({
     return `${year}-${month}`;
   },
   onShow() {
-    this.consumeDefaultFilter();
+    const activeFilter = this.consumeDefaultFilter() || this.data.activeFilter;
     this.syncLocalDrafts().finally(() => {
-      this.fetchInvoices();
+      this.fetchInvoices(activeFilter);
     });
   },
   formatAmount(amountInCents) {
     return `¥${(Number(amountInCents || 0) / 100).toFixed(2)}`;
   },
   buildSummaryCards(invoices, selectedCount = this.data.selectedCount) {
-    const pendingCount = invoices.filter(
-      (item) => item.verifyStatus !== "verified"
-    ).length;
+    const invoiceCount = invoices.length;
     const amountTotal = invoices.reduce(
       (total, item) => total + Number(item.totalAmount || 0),
       0
     );
     return [
-      { label: "待整理", value: String(pendingCount) },
-      { label: "本月金额", value: this.formatAmount(amountTotal) },
+      { label: "票据数", value: String(invoiceCount) },
+      { label: "合计金额", value: this.formatAmount(amountTotal) },
       { label: "已选待导", value: String(selectedCount || 0) },
     ];
   },
   filterVisibleTags(tags) {
-    const hiddenTags = ["未报销", "报销中", "已报销", "未打印", "已打印"];
+    const hiddenTags = [
+      "已核验",
+      "待核验",
+      "核验失败",
+      "未报销",
+      "报销中",
+      "已报销",
+      "未打印",
+      "已打印",
+    ];
     return (tags || []).filter((tag) => !hiddenTags.includes(tag));
   },
   normalizeInvoice(invoice) {
@@ -264,7 +270,7 @@ Page({
     let invoices = allInvoices;
     if (filterId === "ready") {
       invoices = allInvoices.filter(
-        (item) => item.hasOriginalAttachment && item.exportStatus !== "exported"
+        (item) => item.exportStatus !== "exported"
       );
     }
     if (filterId === "month") {
@@ -292,10 +298,10 @@ Page({
     this.setData({
       invoices,
       selectedCount,
-      summaryCards: this.buildSummaryCards(allInvoices, selectedCount),
+      summaryCards: this.buildSummaryCards(invoices, selectedCount),
     });
   },
-  fetchInvoices() {
+  fetchInvoices(activeFilter = this.data.activeFilter) {
     this.setData({
       loading: true,
     });
@@ -304,7 +310,8 @@ Page({
         name: "quickstartFunctions",
         data: {
           type: "listInvoices",
-          activeFilter: "all",
+          activeFilter: activeFilter,
+          monthPrefix: this.getCurrentMonthPrefix(),
           searchKeyword: this.data.searchKeyword,
         },
       })
@@ -325,7 +332,7 @@ Page({
           allInvoices: invoicesWithSelection,
           loading: false,
         });
-        this.applyFilter(this.data.activeFilter, invoicesWithSelection);
+        this.applyFilter(activeFilter, invoicesWithSelection);
       })
       .catch(() => {
         const fallbackInvoices = this.data.invoices.map((item) =>
@@ -352,7 +359,7 @@ Page({
           allInvoices: invoicesWithSelection,
           loading: false,
         });
-        this.applyFilter(this.data.activeFilter, invoicesWithSelection);
+        this.applyFilter(activeFilter, invoicesWithSelection);
         wx.showToast({
           title: "已展示本地票夹数据",
           icon: "none",
@@ -360,49 +367,38 @@ Page({
       });
   },
   handleSearchInput(e) {
-    this.setData({
-      searchKeyword: e.detail.value,
-    });
-    this.fetchInvoices();
+    this.setData(
+      {
+        searchKeyword: e.detail.value,
+      },
+      () => {
+        this.fetchInvoices(this.data.activeFilter);
+      }
+    );
   },
   clearSearch() {
-    this.setData({
-      searchKeyword: "",
-    });
-    this.fetchInvoices();
+    this.setData(
+      {
+        searchKeyword: "",
+      },
+      () => {
+        this.fetchInvoices(this.data.activeFilter);
+      }
+    );
   },
-  toggleFilterPanel() {
-    this.setData({
-      showFilterPanel: !this.data.showFilterPanel,
-    });
-  },
-  closeFilterPanel() {
-    this.setData({
-      showFilterPanel: false,
-    });
-  },
-  applyPanelFilter(e) {
-    const activeFilter = e.currentTarget.dataset.id;
-    this.setData({
-      activeFilter,
-      showFilterPanel: false,
-    });
-    this.fetchInvoices();
-  },
-  resetAllFilters() {
-    this.setData({
-      activeFilter: "all",
-      searchKeyword: "",
-      showFilterPanel: false,
-    });
-    this.fetchInvoices();
+  refreshCurrentFilter() {
+    this.fetchInvoices(this.data.activeFilter);
   },
   selectFilter(e) {
     const activeFilter = e.currentTarget.dataset.id;
-    this.setData({
-      activeFilter,
-    });
-    this.fetchInvoices();
+    this.setData(
+      {
+        activeFilter,
+      },
+      () => {
+        this.fetchInvoices(activeFilter);
+      }
+    );
   },
   toggleInvoice(e) {
     const currentId = e.currentTarget.dataset.id;
@@ -423,7 +419,7 @@ Page({
       allInvoices,
       selectedInvoiceIds,
       selectedCount,
-      summaryCards: this.buildSummaryCards(allInvoices, selectedCount),
+      summaryCards: this.buildSummaryCards(invoices, selectedCount),
     });
   },
   openInvoiceDetail(e) {

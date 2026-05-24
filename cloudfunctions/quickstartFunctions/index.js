@@ -74,13 +74,6 @@ const getInvoiceTypeLabel = (invoiceType) => {
 
 const buildInvoiceTags = (invoice) => {
   const tags = [];
-  if (invoice.verifyStatus === "verified") {
-    tags.push("已核验");
-  } else if (invoice.verifyStatus === "failed") {
-    tags.push("核验失败");
-  } else {
-    tags.push("待核验");
-  }
   if (invoice.exportStatus === "exported") {
     tags.push("已导出");
   } else {
@@ -114,6 +107,13 @@ const formatSearchableAmount = (amountInCents) => {
   return (Number(amountInCents || 0) / 100).toFixed(2);
 };
 
+const getCurrentMonthPrefix = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+};
+
 const buildInvoiceTimeline = (invoice) => {
   return [
     {
@@ -123,10 +123,10 @@ const buildInvoiceTimeline = (invoice) => {
       )}`,
     },
     {
-      title: invoice.ocrStatus === "success" ? "完成 OCR 校验" : "待 OCR 校验",
+      title: invoice.ocrStatus === "success" ? "完成 OCR 识别" : "待 OCR 识别",
       meta:
         invoice.ocrStatus === "success"
-          ? "字段已识别，可继续核验与报销"
+          ? "字段已识别，可继续导出与归档"
           : "当前可继续补录发票字段",
     },
     {
@@ -160,7 +160,7 @@ const matchInvoiceSearchKeyword = (invoice, searchKeyword) => {
   return searchableText.includes(keyword);
 };
 
-const matchInvoiceActiveFilter = (invoice, activeFilter) => {
+const matchInvoiceActiveFilter = (invoice, activeFilter, monthPrefix) => {
   if (!activeFilter || activeFilter === "all") {
     return true;
   }
@@ -174,7 +174,9 @@ const matchInvoiceActiveFilter = (invoice, activeFilter) => {
     return invoice.printStatus === "printed";
   }
   if (activeFilter === "month") {
-    return String(invoice.issueDate || "").startsWith("2026-03");
+    return String(invoice.issueDate || "").startsWith(
+      monthPrefix || getCurrentMonthPrefix()
+    );
   }
   return true;
 };
@@ -243,7 +245,7 @@ const buildSampleInvoices = (openid) => {
         channel: "wechat_chat",
       },
       ocrStatus: "success",
-      verifyStatus: "verified",
+      verifyStatus: "unverified",
       reimburseStatus: "unreimbursed",
       printStatus: "unprinted",
       exportStatus: "none",
@@ -542,6 +544,7 @@ const getReimbursementDetail = async (event) => {
 const listInvoices = async (event) => {
   const result = await ensureInvoiceSeedData();
   const activeFilter = event.activeFilter || (event.data && event.data.activeFilter);
+  const monthPrefix = event.monthPrefix || (event.data && event.data.monthPrefix);
   const searchKeyword = event.searchKeyword || (event.data && event.data.searchKeyword);
   const records = await db
     .collection(INVOICES_COLLECTION)
@@ -553,7 +556,7 @@ const listInvoices = async (event) => {
     .get();
   const filteredInvoices = records.data.filter(
     (invoice) =>
-      matchInvoiceActiveFilter(invoice, activeFilter) &&
+      matchInvoiceActiveFilter(invoice, activeFilter, monthPrefix) &&
       matchInvoiceSearchKeyword(invoice, searchKeyword)
   );
   return {
@@ -726,7 +729,7 @@ const createInvoice = async (event) => {
     sourceType: payload.sourceType || "manual",
     sourceMeta: payload.sourceMeta || {},
     ocrStatus: payload.ocrStatus || "skipped",
-    verifyStatus: payload.verifyStatus || "unverified",
+    verifyStatus: "unverified",
     reimburseStatus: payload.reimburseStatus || "unreimbursed",
     printStatus: payload.printStatus || "unprinted",
     exportStatus: payload.exportStatus || "none",

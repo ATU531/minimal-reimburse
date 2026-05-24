@@ -748,14 +748,11 @@ Page({
           : "手动录入",
       category: form.category.trim(),
       remark: form.remark.trim(),
-      verifyStatus: sourceType === "ocr" ? "verified" : "unverified",
+      verifyStatus: "unverified",
       reimburseStatus: "unreimbursed",
       printStatus: "unprinted",
       exportStatus: "none",
-      tags:
-        sourceType === "ocr"
-          ? ["已核验", "可导出"]
-          : ["待核验", "可导出"],
+      tags: ["可导出"],
       timeline: [
         {
           title:
@@ -931,7 +928,7 @@ Page({
             : undefined,
         },
         ocrStatus: hasOcrResult ? "success" : "skipped",
-        verifyStatus: hasOcrResult ? "verified" : "unverified",
+        verifyStatus: "unverified",
         attachments: this.data.uploadedFileID ? [{ fileID: this.data.uploadedFileID, type: selectedFile.fileType || "image" }] : [],
       };
       sourceInfo = {
@@ -961,7 +958,7 @@ Page({
           recognizedFields: ocrResult.fields || {},
         },
         ocrStatus: "success",
-        verifyStatus: "verified",
+        verifyStatus: "unverified",
         attachments: this.data.uploadedFileID ? [{ fileID: this.data.uploadedFileID, type: "image" }] : [],
       };
       sourceInfo = {
@@ -997,7 +994,7 @@ Page({
             : undefined,
         },
         ocrStatus: hasOcrResult ? "success" : "skipped",
-        verifyStatus: hasOcrResult ? "verified" : "unverified",
+        verifyStatus: "unverified",
         attachments: this.data.uploadedFileID ? [{ fileID: this.data.uploadedFileID, type: selectedFile.fileType || "image" }] : [],
       };
       sourceInfo = {
@@ -1029,7 +1026,7 @@ Page({
             : undefined,
         },
         ocrStatus: hasOcrResult ? "success" : "skipped",
-        verifyStatus: hasOcrResult ? "verified" : "unverified",
+        verifyStatus: "unverified",
         attachments: this.data.uploadedFileID ? [{ fileID: this.data.uploadedFileID, type: "image" }] : [],
       };
       sourceInfo = {
