@@ -7,6 +7,7 @@ cloudfunctions/quickstartFunctions/node_modules/*
 滴滴电子发票.pdf
 发票.png
 票易理头像.png
+!miniprogram/images/票易理头像.png
 小程序头像.png
 invoices-1776325184588.pdf
 docs/functional-design.md

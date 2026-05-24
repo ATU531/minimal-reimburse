@@ -3,18 +3,8 @@ const DEFAULT_PDF_TEMPLATE_ID = "original-archive";
 const PDF_TEMPLATE_OPTIONS = [
   {
     id: "original-archive",
-    title: "原票归档",
-    desc: "默认模板，适合保留原始图片或 PDF。",
-  },
-  {
-    id: "month-archive",
-    title: "按月份归档",
-    desc: "导出文件名优先按月份组织。",
-  },
-  {
-    id: "simple-list",
-    title: "简洁清单",
-    desc: "弱化说明，适合快速转发。",
+    title: "原票模板",
+    desc: "对应当前已实现的原票 PDF 导出功能。",
   },
 ];
 

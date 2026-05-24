@@ -3,9 +3,10 @@ const INVOICE_TITLES_STORAGE_KEY = "profileInvoiceTitles";
 const EMPTY_TITLE_FORM = {
   name: "",
   taxNumber: "",
-  addressPhone: "",
+  unitAddress: "",
+  phoneNumber: "",
+  bankName: "",
   bankAccount: "",
-  commonSubject: "",
   remark: "",
   isDefault: false,
 };
@@ -32,9 +33,10 @@ const SECTION_MAP = {
 const trimTitleForm = (form) => ({
   name: (form.name || "").trim(),
   taxNumber: (form.taxNumber || "").trim().toUpperCase(),
-  addressPhone: (form.addressPhone || "").trim(),
+  unitAddress: (form.unitAddress || "").trim(),
+  phoneNumber: (form.phoneNumber || "").trim(),
+  bankName: (form.bankName || "").trim(),
   bankAccount: (form.bankAccount || "").trim(),
-  commonSubject: (form.commonSubject || "").trim(),
   remark: (form.remark || "").trim(),
   isDefault: !!form.isDefault,
 });
@@ -82,7 +84,7 @@ Page({
       },
       {
         question: "税号可以不填写吗？",
-        answer: "个人或无需税号的场景可以留空；填写时需为 15 到 20 位数字或大写字母。",
+        answer: "当前版本要求填写纳税人识别号，需为 15 到 20 位数字或大写字母。",
       },
       {
         question: "删除默认抬头后会怎样？",
@@ -90,7 +92,6 @@ Page({
       },
     ],
     contactItems: [
-      { label: "在线客服", value: "通过个人中心的联系客服入口提交问题" },
       { label: "资料反馈", value: "请附上发票截图、PDF 文件名和问题描述" },
       { label: "处理时间", value: "工作日 9:00-18:00 优先处理发票资料问题" },
     ],
@@ -170,7 +171,9 @@ Page({
       errors.name = "抬头名称不能为空";
     }
 
-    if (form.taxNumber && !/^[0-9A-Z]{15,20}$/.test(form.taxNumber)) {
+    if (!form.taxNumber) {
+      errors.taxNumber = "请填写纳税人识别号";
+    } else if (!/^[0-9A-Z]{15,20}$/.test(form.taxNumber)) {
       errors.taxNumber = "纳税人识别号格式不正确";
     }
 

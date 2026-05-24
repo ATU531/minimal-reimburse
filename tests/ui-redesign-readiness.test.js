@@ -24,7 +24,6 @@ const requiredIcons = [
   "ui-search.svg",
   "ui-building.svg",
   "ui-guide.svg",
-  "ui-service.svg",
   "ui-question.svg",
   "ui-phone.svg",
 ];
@@ -35,6 +34,10 @@ requiredIcons.forEach((fileName) => {
     `required icon asset is missing: ${fileName}`
   );
 });
+assert(
+  exists("miniprogram", "images", "票易理头像.png"),
+  "profile avatar asset is missing"
+);
 
 const appWxss = read("miniprogram", "app.wxss");
 assertIncludes(appWxss, "Inter", "global wxss");
@@ -82,13 +85,27 @@ assertIncludes(folderWxml, "export-btn-disabled", "folder wxml");
 
 const profileWxml = read("miniprogram", "pages", "profile", "index.wxml");
 assertIncludes(profileWxml, "profile-hero", "profile wxml");
+assertIncludes(profileWxml, "/images/票易理头像.png", "profile wxml");
 assertIncludes(profileWxml, "menu-icon", "profile wxml");
 assertNotIncludes(profileWxml, "PRO", "profile wxml");
 const profileJs = read("miniprogram", "pages", "profile", "index.js");
 assertIncludes(profileJs, "profileInvoiceTitles", "profile js");
 assertIncludes(profileJs, "profilePdfTemplate", "profile js");
-assertIncludes(profileWxml, 'open-type="contact"', "profile wxml");
-assertIncludes(profileWxml, "isContact", "profile wxml");
+assertIncludes(profileJs, "原票模板", "profile js");
+assertIncludes(profileJs, "piaoyili2026@126.com", "profile js");
+assertIncludes(profileJs, "ATU-531", "profile js");
+assertIncludes(profileJs, "showContactModal", "profile js");
+assertNotIncludes(profileJs, 'title: "联系我们"', "profile js");
+assertNotIncludes(profileJs, "在线客服", "profile js");
+assertNotIncludes(profileJs, "/pages/settings/index?section=contact", "profile js");
+assertIncludes(profileWxml, 'class="menu-arrow" wx:if="{{entry.page}}"', "profile wxml");
+assertIncludes(profileWxml, "contact-modal-mask", "profile wxml");
+assertIncludes(profileWxml, "contact-modal-line", "profile wxml");
+assertIncludes(profileWxml, "{{item.label}}：{{item.value}}", "profile wxml");
+assertNotIncludes(profileWxml, "contact-modal-label", "profile wxml");
+assertNotIncludes(profileWxml, "contact-modal-value", "profile wxml");
+assertNotIncludes(profileWxml, 'open-type="contact"', "profile wxml");
+assertNotIncludes(profileWxml, "isContact", "profile wxml");
 
 const settingsJs = read("miniprogram", "pages", "settings", "index.js");
 const settingsWxml = read("miniprogram", "pages", "settings", "index.wxml");
@@ -98,8 +115,12 @@ assertIncludes(settingsJs, "profileInvoiceTitles", "settings js");
 assertIncludes(settingsJs, "showNewTitleForm", "settings js");
 assertIncludes(settingsJs, "saveTitleForm", "settings js");
 assertIncludes(settingsWxml, "纳税人识别号", "settings wxml");
-assertIncludes(settingsWxml, "开户行及账号", "settings wxml");
-assertIncludes(settingsWxml, "常用科目", "settings wxml");
+assertIncludes(settingsWxml, "单位地址", "settings wxml");
+assertIncludes(settingsWxml, "电话号码", "settings wxml");
+assertIncludes(settingsWxml, "开户银行", "settings wxml");
+assertIncludes(settingsWxml, "银行账户", "settings wxml");
+assertIncludes(settingsWxml, "备注", "settings wxml");
+assertNotIncludes(settingsWxml, "常用科目", "settings wxml");
 assertIncludes(settingsWxml, "收票说明与指引", "settings wxml");
 assertIncludes(settingsWxml, "常见问题", "settings wxml");
 assertIncludes(settingsWxml, "联系我们", "settings wxml");
@@ -115,6 +136,9 @@ assertIncludes(exportCenterJs, "profilePdfTemplate", "export center js");
 assertIncludes(exportCenterJs, "selectTemplate", "export center js");
 assertIncludes(exportCenterWxml, "template-card", "export center wxml");
 assertIncludes(exportCenterWxml, "PDF 导出模板", "export center wxml");
+assertIncludes(exportCenterJs, "原票模板", "export center js");
+assertNotIncludes(exportCenterJs, "按月份归档", "export center js");
+assertNotIncludes(exportCenterJs, "简洁清单", "export center js");
 assertNotIncludes(exportCenterJs, "电子签名 L3", "export center js");
 assertNotIncludes(exportCenterWxml, "数字证书", "export center wxml");
 

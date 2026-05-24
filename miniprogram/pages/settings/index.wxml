@@ -33,9 +33,10 @@
           </view>
         </view>
         <view class="title-meta" wx:if="{{item.taxNumber}}">纳税人识别号：{{item.taxNumber}}</view>
-        <view class="title-meta" wx:if="{{item.addressPhone}}">地址电话：{{item.addressPhone}}</view>
-        <view class="title-meta" wx:if="{{item.bankAccount}}">开户行及账号：{{item.bankAccount}}</view>
-        <view class="title-meta" wx:if="{{item.commonSubject}}">常用科目：{{item.commonSubject}}</view>
+        <view class="title-meta" wx:if="{{item.unitAddress}}">单位地址：{{item.unitAddress}}</view>
+        <view class="title-meta" wx:if="{{item.phoneNumber}}">电话号码：{{item.phoneNumber}}</view>
+        <view class="title-meta" wx:if="{{item.bankName}}">开户银行：{{item.bankName}}</view>
+        <view class="title-meta" wx:if="{{item.bankAccount}}">银行账户：{{item.bankAccount}}</view>
         <view class="title-meta" wx:if="{{item.remark}}">备注：{{item.remark}}</view>
         <button wx:if="{{!item.isDefault}}" class="default-action" data-id="{{item.id}}" bindtap="setDefaultTitle">设为默认</button>
       </view>
@@ -44,26 +45,30 @@
     <view wx:if="{{showTitleForm}}" class="form-card">
       <view class="form-title">{{editingTitleId ? '编辑抬头' : '新增抬头'}}</view>
       <view class="field">
-        <view class="field-label">抬头名称</view>
+        <view class="field-label">抬头名称 <text class="required-mark">*</text></view>
         <input class="field-input" value="{{titleForm.name}}" data-field="name" placeholder="请输入公司或个人抬头" bindinput="handleTitleInput" />
         <view wx:if="{{titleErrors.name}}" class="field-error">{{titleErrors.name}}</view>
       </view>
       <view class="field">
-        <view class="field-label">纳税人识别号</view>
+        <view class="field-label">纳税人识别号 <text class="required-mark">*</text></view>
         <input class="field-input" value="{{titleForm.taxNumber}}" data-field="taxNumber" placeholder="15-20 位数字或大写字母" bindinput="handleTitleInput" />
         <view wx:if="{{titleErrors.taxNumber}}" class="field-error">{{titleErrors.taxNumber}}</view>
       </view>
       <view class="field">
-        <view class="field-label">地址电话</view>
-        <input class="field-input" value="{{titleForm.addressPhone}}" data-field="addressPhone" placeholder="地址和联系电话" bindinput="handleTitleInput" />
+        <view class="field-label">单位地址</view>
+        <input class="field-input" value="{{titleForm.unitAddress}}" data-field="unitAddress" placeholder="请输入单位地址" bindinput="handleTitleInput" />
       </view>
       <view class="field">
-        <view class="field-label">开户行及账号</view>
-        <input class="field-input" value="{{titleForm.bankAccount}}" data-field="bankAccount" placeholder="开户银行及账号" bindinput="handleTitleInput" />
+        <view class="field-label">电话号码</view>
+        <input class="field-input" value="{{titleForm.phoneNumber}}" data-field="phoneNumber" placeholder="请输入联系电话" bindinput="handleTitleInput" />
       </view>
       <view class="field">
-        <view class="field-label">常用科目</view>
-        <input class="field-input" value="{{titleForm.commonSubject}}" data-field="commonSubject" placeholder="如信息服务、差旅等" bindinput="handleTitleInput" />
+        <view class="field-label">开户银行</view>
+        <input class="field-input" value="{{titleForm.bankName}}" data-field="bankName" placeholder="请输入开户银行" bindinput="handleTitleInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">银行账户</view>
+        <input class="field-input" value="{{titleForm.bankAccount}}" data-field="bankAccount" placeholder="请输入银行账户" bindinput="handleTitleInput" />
       </view>
       <view class="field">
         <view class="field-label">备注</view>

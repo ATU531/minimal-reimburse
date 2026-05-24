@@ -112,17 +112,14 @@ page {
   padding: 28rpx;
 }
 
-.title-card-head,
 .title-main,
-.title-actions,
 .form-actions {
   display: flex;
   align-items: center;
 }
 
 .title-card-head {
-  justify-content: space-between;
-  gap: 18rpx;
+  display: block;
 }
 
 .title-main {
@@ -134,7 +131,8 @@ page {
 .title-name {
   flex: 1;
   min-width: 0;
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .default-badge {
@@ -149,8 +147,16 @@ page {
 }
 
 .title-actions {
-  flex-shrink: 0;
-  gap: 10rpx;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.title-actions .action {
+  width: 100%;
+  min-width: 0;
+  padding: 0 10rpx;
 }
 
 .title-meta {
@@ -191,6 +197,10 @@ page {
   line-height: 1.4;
   font-weight: 800;
   color: #334155;
+}
+
+.required-mark {
+  color: #DC2626;
 }
 
 .field-input,

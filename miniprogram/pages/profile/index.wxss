@@ -41,14 +41,17 @@ page {
   width: 104rpx;
   height: 104rpx;
   flex-shrink: 0;
+  overflow: hidden;
   border-radius: 50%;
   border: 4rpx solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 42rpx;
-  font-weight: 900;
+}
+
+.profile-avatar-image {
+  display: block;
+  width: 220rpx;
+  height: 220rpx;
+  transform: translate(-58rpx, -44rpx);
 }
 
 .profile-main {
@@ -173,14 +176,61 @@ page {
   line-height: 1;
 }
 
-.menu-button {
-  width: 100%;
-  margin: 0;
-  background: #FFFFFF;
-  border-radius: 0;
-  text-align: left;
+.contact-modal-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56rpx;
+  background: rgba(0, 0, 0, 0.48);
 }
 
-.menu-button::after {
-  border: none;
+.contact-modal-card {
+  width: 100%;
+  max-width: 620rpx;
+  overflow: hidden;
+  border-radius: 18rpx;
+  background: #FFFFFF;
+  box-shadow: 0 24rpx 60rpx rgba(15, 23, 42, 0.18);
+}
+
+.contact-modal-title {
+  padding: 54rpx 48rpx 22rpx;
+  color: #111827;
+  font-size: 32rpx;
+  font-weight: 900;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.contact-modal-body {
+  padding: 12rpx 36rpx 48rpx;
+}
+
+.contact-modal-line {
+  margin-top: 18rpx;
+  color: #8A8F98;
+  font-size: 28rpx;
+  line-height: 1.45;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.contact-modal-line:first-child {
+  margin-top: 0;
+}
+
+.contact-modal-confirm {
+  min-height: 94rpx;
+  border-top: 2rpx solid #EEF2F7;
+  color: #53658A;
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 94rpx;
+  text-align: center;
 }
