@@ -58,7 +58,7 @@ assertNotIncludes(invoiceDetailWxml, "导出 Excel", "invoice detail wxml");
 assertNotIncludes(invoiceDetailWxml, "加入报销单", "invoice detail wxml");
 
 const profileJs = read("miniprogram", "pages", "profile", "index.js");
-["企业", "报销", "打印", "协作"].forEach((token) => {
+["企业", "报销", "打印", "协作", "会员"].forEach((token) => {
   assertNotIncludes(profileJs, token, "profile js");
 });
 

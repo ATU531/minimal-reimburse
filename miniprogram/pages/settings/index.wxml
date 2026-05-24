@@ -1,19 +1,109 @@
 <view class="page">
   <view class="hero-card">
+    <view class="hero-kicker">Settings</view>
     <view class="hero-title">{{currentSection.title}}</view>
     <view class="hero-desc">{{currentSection.subtitle}}</view>
   </view>
 
-  <view class="group-card" wx:for="{{settingGroups}}" wx:key="title" wx:for-item="group">
-    <view class="group-title">{{group.title}}</view>
-    <view class="setting-item" wx:for="{{group.items}}" wx:key="*this" wx:for-item="item" data-label="{{item}}" bindtap="handleTap">
-      <view class="setting-label">{{item}}</view>
-      <view class="setting-state">已启用</view>
+  <view wx:if="{{activeSection === 'title'}}" class="section-panel">
+    <view class="toolbar">
+      <view>
+        <view class="toolbar-title">发票抬头</view>
+        <view class="toolbar-desc">保存常用购买方信息，开票和录入时可快速核对。</view>
+      </view>
+      <button class="action action-primary" bindtap="showNewTitleForm">新增抬头</button>
+    </view>
+
+    <view wx:if="{{invoiceTitles.length === 0 && !showTitleForm}}" class="empty-card">
+      <view class="empty-title">暂无发票抬头</view>
+      <view class="empty-desc">添加公司或个人抬头后，可在报销录入时复用。</view>
+      <button class="action action-primary" bindtap="showNewTitleForm">立即添加</button>
+    </view>
+
+    <view wx:if="{{!showTitleForm && invoiceTitles.length}}" class="title-list">
+      <view class="title-card" wx:for="{{invoiceTitles}}" wx:key="id" wx:for-item="item">
+        <view class="title-card-head">
+          <view class="title-main">
+            <view class="title-name">{{item.name}}</view>
+            <view wx:if="{{item.isDefault}}" class="default-badge">默认</view>
+          </view>
+          <view class="title-actions">
+            <button class="action action-ghost" data-id="{{item.id}}" bindtap="editTitle">编辑</button>
+            <button class="action action-ghost" data-id="{{item.id}}" bindtap="deleteTitle">删除</button>
+          </view>
+        </view>
+        <view class="title-meta" wx:if="{{item.taxNumber}}">纳税人识别号：{{item.taxNumber}}</view>
+        <view class="title-meta" wx:if="{{item.addressPhone}}">地址电话：{{item.addressPhone}}</view>
+        <view class="title-meta" wx:if="{{item.bankAccount}}">开户行及账号：{{item.bankAccount}}</view>
+        <view class="title-meta" wx:if="{{item.commonSubject}}">常用科目：{{item.commonSubject}}</view>
+        <view class="title-meta" wx:if="{{item.remark}}">备注：{{item.remark}}</view>
+        <button wx:if="{{!item.isDefault}}" class="default-action" data-id="{{item.id}}" bindtap="setDefaultTitle">设为默认</button>
+      </view>
+    </view>
+
+    <view wx:if="{{showTitleForm}}" class="form-card">
+      <view class="form-title">{{editingTitleId ? '编辑抬头' : '新增抬头'}}</view>
+      <view class="field">
+        <view class="field-label">抬头名称</view>
+        <input class="field-input" value="{{titleForm.name}}" data-field="name" placeholder="请输入公司或个人抬头" bindinput="handleTitleInput" />
+        <view wx:if="{{titleErrors.name}}" class="field-error">{{titleErrors.name}}</view>
+      </view>
+      <view class="field">
+        <view class="field-label">纳税人识别号</view>
+        <input class="field-input" value="{{titleForm.taxNumber}}" data-field="taxNumber" placeholder="15-20 位数字或大写字母" bindinput="handleTitleInput" />
+        <view wx:if="{{titleErrors.taxNumber}}" class="field-error">{{titleErrors.taxNumber}}</view>
+      </view>
+      <view class="field">
+        <view class="field-label">地址电话</view>
+        <input class="field-input" value="{{titleForm.addressPhone}}" data-field="addressPhone" placeholder="地址和联系电话" bindinput="handleTitleInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">开户行及账号</view>
+        <input class="field-input" value="{{titleForm.bankAccount}}" data-field="bankAccount" placeholder="开户银行及账号" bindinput="handleTitleInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">常用科目</view>
+        <input class="field-input" value="{{titleForm.commonSubject}}" data-field="commonSubject" placeholder="如信息服务、差旅等" bindinput="handleTitleInput" />
+      </view>
+      <view class="field">
+        <view class="field-label">备注</view>
+        <textarea class="field-textarea" value="{{titleForm.remark}}" data-field="remark" placeholder="补充使用场景或开票要求" bindinput="handleTitleInput" />
+      </view>
+      <view class="switch-row">
+        <view>
+          <view class="switch-title">设为默认</view>
+          <view class="switch-desc">启用后会替换当前默认抬头</view>
+        </view>
+        <switch checked="{{titleForm.isDefault}}" bindchange="handleDefaultChange" color="#2563EB" />
+      </view>
+      <view class="form-actions">
+        <button class="action action-ghost" bindtap="cancelTitleForm">取消</button>
+        <button class="action action-primary" bindtap="saveTitleForm">保存抬头</button>
+      </view>
     </view>
   </view>
 
-  <view class="tips-card">
-    <view class="tips-title">配置说明</view>
-    <view class="tips-text">当前页面用于展示发票资料配置项，后续可接入常用抬头、收票说明和原票归档偏好。</view>
+  <view wx:if="{{activeSection === 'guide'}}" class="content-stack">
+    <view class="section-title">收票说明与指引</view>
+    <view class="content-card" wx:for="{{guideGroups}}" wx:key="title" wx:for-item="group">
+      <view class="content-title">{{group.title}}</view>
+      <view class="content-item" wx:for="{{group.items}}" wx:key="*this" wx:for-item="item">{{item}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{activeSection === 'faq'}}" class="content-stack">
+    <view class="section-title">常见问题</view>
+    <view class="content-card" wx:for="{{faqItems}}" wx:key="question" wx:for-item="item">
+      <view class="content-title">{{item.question}}</view>
+      <view class="content-desc">{{item.answer}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{activeSection === 'contact'}}" class="content-stack">
+    <view class="section-title">联系我们</view>
+    <view class="content-card contact-card" wx:for="{{contactItems}}" wx:key="label" wx:for-item="item">
+      <view class="content-title">{{item.label}}</view>
+      <view class="content-desc">{{item.value}}</view>
+    </view>
   </view>
 </view>

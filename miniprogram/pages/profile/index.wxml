@@ -19,21 +19,33 @@
 
   <view class="menu-group" wx:for="{{menuGroups}}" wx:key="id" wx:for-item="group">
     <view class="menu-group-title">{{group.title}}</view>
-    <view
-      class="menu-item"
-      wx:for="{{group.items}}"
-      wx:key="label"
-      wx:for-item="entry"
-      data-label="{{entry.label}}"
-      data-page="{{entry.page}}"
-      bindtap="handleTap"
-    >
-      <image class="menu-icon" src="{{entry.icon}}" mode="aspectFit"></image>
-      <view class="menu-main">
-        <view class="menu-label">{{entry.label}}</view>
+    <block wx:for="{{group.items}}" wx:key="label" wx:for-item="entry">
+      <button
+        wx:if="{{entry.isContact}}"
+        class="menu-item menu-button"
+        open-type="contact"
+        data-label="{{entry.label}}"
+      >
+        <image class="menu-icon" src="{{entry.icon}}" mode="aspectFit"></image>
+        <view class="menu-main">
+          <view class="menu-label">{{entry.label}}</view>
+        </view>
+        <view class="menu-arrow">›</view>
+      </button>
+      <view
+        wx:else
+        class="menu-item"
+        data-label="{{entry.label}}"
+        data-page="{{entry.page}}"
+        bindtap="handleTap"
+      >
+        <image class="menu-icon" src="{{entry.icon}}" mode="aspectFit"></image>
+        <view class="menu-main">
+          <view class="menu-label">{{entry.label}}</view>
+        </view>
+        <view class="menu-value" wx:if="{{entry.value}}">{{entry.value}}</view>
+        <view class="menu-arrow">›</view>
       </view>
-      <view class="menu-value" wx:if="{{entry.value}}">{{entry.value}}</view>
-      <view class="menu-arrow">›</view>
-    </view>
+    </block>
   </view>
 </view>
