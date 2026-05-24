@@ -84,11 +84,25 @@ const profileWxml = read("miniprogram", "pages", "profile", "index.wxml");
 assertIncludes(profileWxml, "profile-hero", "profile wxml");
 assertIncludes(profileWxml, "menu-icon", "profile wxml");
 assertNotIncludes(profileWxml, "PRO", "profile wxml");
+const profileJs = read("miniprogram", "pages", "profile", "index.js");
+assertIncludes(profileJs, "profileInvoiceTitles", "profile js");
+assertIncludes(profileJs, "profilePdfTemplate", "profile js");
+assertIncludes(profileWxml, 'open-type="contact"', "profile wxml");
+assertIncludes(profileWxml, "isContact", "profile wxml");
 
 const settingsJs = read("miniprogram", "pages", "settings", "index.js");
 const settingsWxml = read("miniprogram", "pages", "settings", "index.wxml");
 assertIncludes(settingsJs, "发票资料设置", "settings js");
 assertIncludes(settingsJs, "原票附件保留说明", "settings js");
+assertIncludes(settingsJs, "profileInvoiceTitles", "settings js");
+assertIncludes(settingsJs, "showNewTitleForm", "settings js");
+assertIncludes(settingsJs, "saveTitleForm", "settings js");
+assertIncludes(settingsWxml, "纳税人识别号", "settings wxml");
+assertIncludes(settingsWxml, "开户行及账号", "settings wxml");
+assertIncludes(settingsWxml, "常用科目", "settings wxml");
+assertIncludes(settingsWxml, "收票说明与指引", "settings wxml");
+assertIncludes(settingsWxml, "常见问题", "settings wxml");
+assertIncludes(settingsWxml, "联系我们", "settings wxml");
 assertNotIncludes(settingsJs, "默认导出 Excel", "settings js");
 assertNotIncludes(settingsJs, "打印设置", "settings js");
 assertNotIncludes(settingsWxml, "企业配置", "settings wxml");
@@ -97,6 +111,10 @@ const exportCenterJs = read("miniprogram", "pages", "export-center", "index.js")
 const exportCenterWxml = read("miniprogram", "pages", "export-center", "index.wxml");
 assertIncludes(exportCenterJs, "正在合并原票附件", "export center js");
 assertIncludes(exportCenterWxml, "export-preview-card", "export center wxml");
+assertIncludes(exportCenterJs, "profilePdfTemplate", "export center js");
+assertIncludes(exportCenterJs, "selectTemplate", "export center js");
+assertIncludes(exportCenterWxml, "template-card", "export center wxml");
+assertIncludes(exportCenterWxml, "PDF 导出模板", "export center wxml");
 assertNotIncludes(exportCenterJs, "电子签名 L3", "export center js");
 assertNotIncludes(exportCenterWxml, "数字证书", "export center wxml");
 
