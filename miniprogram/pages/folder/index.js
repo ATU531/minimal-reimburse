@@ -12,7 +12,7 @@ Page({
     filters: [
       { id: "all", label: "全部" },
       { id: "month", label: "本月" },
-      { id: "ready", label: "可导出" },
+      { id: "ready", label: "未导出" },
     ],
     summaryCards: [
       { label: "票据数", value: "0" },
@@ -270,7 +270,7 @@ Page({
     let invoices = allInvoices;
     if (filterId === "ready") {
       invoices = allInvoices.filter(
-        (item) => item.exportStatus !== "exported"
+        (item) => item.exportStatus === "none"
       );
     }
     if (filterId === "month") {

@@ -41,6 +41,8 @@ const cloudIndex = read("cloudfunctions", "quickstartFunctions", "index.js");
 });
 
 assertIncludes(folderWxml, 'bindtap="refreshCurrentFilter"', "folder wxml");
+assertIncludes(folderJs, '{ id: "ready", label: "未导出" }', "folder js");
+assertNotIncludes(folderJs, '{ id: "ready", label: "可导出" }', "folder js");
 const invoiceCardTagMatch = folderWxml.match(/<view\n      wx:if="{{invoices.length}}"[\s\S]*?\n    >/);
 assert(invoiceCardTagMatch, "folder wxml should include invoice card item");
 assertNotIncludes(
@@ -72,7 +74,8 @@ assertNotIncludes(
   'item.hasOriginalAttachment && item.exportStatus !== "exported"',
   "folder js"
 );
-assertIncludes(folderJs, 'item.exportStatus !== "exported"', "folder js");
+assertNotIncludes(folderJs, 'item.exportStatus !== "exported"', "folder js");
+assertIncludes(folderJs, 'item.exportStatus === "none"', "folder js");
 assertIncludes(folderJs, "fetchInvoices(activeFilter", "folder js");
 assertIncludes(folderJs, "activeFilter: activeFilter", "folder js");
 assertIncludes(folderJs, "monthPrefix: this.getCurrentMonthPrefix()", "folder js");
@@ -91,6 +94,7 @@ assertIncludes(
   "cloud function"
 );
 assertNotIncludes(cloudIndex, 'startsWith("2026-03")', "cloud function");
-assertIncludes(cloudIndex, 'invoice.exportStatus !== "exported"', "cloud function");
+assertNotIncludes(cloudIndex, 'invoice.exportStatus !== "exported"', "cloud function");
+assertIncludes(cloudIndex, 'invoice.exportStatus === "none"', "cloud function");
 
 console.log("folder filter behavior checks passed");

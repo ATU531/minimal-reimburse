@@ -168,7 +168,7 @@ const matchInvoiceActiveFilter = (invoice, activeFilter, monthPrefix) => {
     return invoice.reimburseStatus === "unreimbursed";
   }
   if (activeFilter === "ready") {
-    return invoice.exportStatus !== "exported";
+    return invoice.exportStatus === "none";
   }
   if (activeFilter === "printed") {
     return invoice.printStatus === "printed";

@@ -80,6 +80,8 @@ const folderJs = read("miniprogram", "pages", "folder", "index.js");
 const folderWxml = read("miniprogram", "pages", "folder", "index.wxml");
 assertIncludes(folderJs, "getCurrentMonthPrefix", "folder js");
 assertNotIncludes(folderJs, 'startsWith("2026-03")', "folder js");
+assertIncludes(folderJs, '{ id: "ready", label: "未导出" }', "folder js");
+assertNotIncludes(folderJs, '{ id: "ready", label: "可导出" }', "folder js");
 assertIncludes(folderWxml, "ui-search.svg", "folder wxml");
 assertIncludes(folderWxml, "export-btn-disabled", "folder wxml");
 assertIncludes(
