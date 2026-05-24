@@ -111,7 +111,7 @@ Page({
   formatAmount(amountInCents) {
     return `¥${(Number(amountInCents || 0) / 100).toFixed(2)}`;
   },
-  buildSummaryCards(invoices) {
+  buildSummaryCards(invoices, selectedCount = this.data.selectedCount) {
     const pendingCount = invoices.filter(
       (item) => item.verifyStatus !== "verified"
     ).length;
@@ -122,7 +122,7 @@ Page({
     return [
       { label: "待整理", value: String(pendingCount) },
       { label: "本月金额", value: this.formatAmount(amountTotal) },
-      { label: "已选待导", value: String(this.data.selectedCount || 0) },
+      { label: "已选待导", value: String(selectedCount || 0) },
     ];
   },
   filterVisibleTags(tags) {
@@ -271,19 +271,7 @@ Page({
     this.setData({
       invoices,
       selectedCount,
-      summaryCards: [
-        { label: "待整理", value: String(allInvoices.filter((item) => item.verifyStatus !== "verified").length) },
-        {
-          label: "本月金额",
-          value: this.formatAmount(
-            allInvoices.reduce(
-              (total, item) => total + Number(item.totalAmount || 0),
-              0
-            )
-          ),
-        },
-        { label: "已选待导", value: String(selectedCount) },
-      ],
+      summaryCards: this.buildSummaryCards(allInvoices, selectedCount),
     });
   },
   fetchInvoices() {
@@ -399,7 +387,7 @@ Page({
     this.setData({
       invoices,
       selectedCount,
-      summaryCards: this.buildSummaryCards(this.data.allInvoices),
+      summaryCards: this.buildSummaryCards(this.data.allInvoices, selectedCount),
     });
   },
   openInvoiceDetail(e) {
