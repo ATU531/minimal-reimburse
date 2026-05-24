@@ -1,8 +1,31 @@
+const PDF_TEMPLATE_STORAGE_KEY = "profilePdfTemplate";
+const DEFAULT_PDF_TEMPLATE_ID = "original-archive";
+const PDF_TEMPLATE_OPTIONS = [
+  {
+    id: "original-archive",
+    title: "原票归档",
+    desc: "默认模板，适合保留原始图片或 PDF。",
+  },
+  {
+    id: "month-archive",
+    title: "按月份归档",
+    desc: "导出文件名优先按月份组织。",
+  },
+  {
+    id: "simple-list",
+    title: "简洁清单",
+    desc: "弱化说明，适合快速转发。",
+  },
+];
+
 Page({
   data: {
+    mode: "normal",
     loading: false,
     creating: false,
     selectedFormat: "pdf",
+    selectedTemplateId: DEFAULT_PDF_TEMPLATE_ID,
+    templateOptions: PDF_TEMPLATE_OPTIONS,
     scopeType: "filtered_result",
     scopeId: "",
     currentView: {
@@ -25,19 +48,62 @@ Page({
   },
   onLoad(options) {
     const type = options.type || "pdf";
+    const mode = options.mode === "settings" ? "settings" : "normal";
     const scopeType = options.scope || "filtered_result";
     const scopeId = options.scopeId || "";
-    const currentView = this.data.viewMap[type] || this.data.viewMap.pdf;
+    const normalView = this.data.viewMap[type] || this.data.viewMap.pdf;
+    const currentView =
+      mode === "settings"
+        ? {
+            title: "PDF 导出模板",
+            subtitle: "选择本地导出偏好，当前版本不改变云端 PDF 生成内容",
+          }
+        : normalView;
     this.setData({
+      mode,
       currentView,
       selectedFormat: "pdf",
+      selectedTemplateId: this.getSavedTemplateId(),
       scopeType,
       scopeId,
     });
+    if (mode === "settings") {
+      return;
+    }
     this.fetchExportJobs();
   },
   onShow() {
+    if (this.data.mode === "settings") {
+      this.setData({
+        selectedTemplateId: this.getSavedTemplateId(),
+      });
+      return;
+    }
     this.fetchExportJobs();
+  },
+  getSavedTemplateId() {
+    const saved = wx.getStorageSync(PDF_TEMPLATE_STORAGE_KEY);
+    const selectedTemplateId = saved && saved.selectedTemplateId;
+    const exists = PDF_TEMPLATE_OPTIONS.some((item) => item.id === selectedTemplateId);
+    return exists ? selectedTemplateId : DEFAULT_PDF_TEMPLATE_ID;
+  },
+  selectTemplate(e) {
+    const selectedTemplateId = e.currentTarget.dataset.id;
+    const exists = PDF_TEMPLATE_OPTIONS.some((item) => item.id === selectedTemplateId);
+    if (!exists) {
+      return;
+    }
+    wx.setStorageSync(PDF_TEMPLATE_STORAGE_KEY, {
+      selectedTemplateId,
+      updatedAt: Date.now(),
+    });
+    this.setData({
+      selectedTemplateId,
+    });
+    wx.showToast({
+      title: "已保存模板",
+      icon: "none",
+    });
   },
   buildTaskList(items) {
     return items.map((item) => ({
