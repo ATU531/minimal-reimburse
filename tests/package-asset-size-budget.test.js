@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const repoRoot = path.resolve(__dirname, '..');
-const maxAssetBytes = 200 * 1024;
+const maxAssetBytes = 100 * 1024;
 const assetExtensions = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp3', '.wav', '.aac', '.m4a']);
 const ignoredDirs = new Set(['.git', 'node_modules']);
 
@@ -32,7 +32,7 @@ const oversizedAssets = listFiles(repoRoot)
 assert.deepStrictEqual(
   oversizedAssets,
   [],
-  `Assets must not exceed 200K:\n${oversizedAssets
+  `Assets must not exceed 100K:\n${oversizedAssets
     .map((asset) => `${path.relative(repoRoot, asset.filePath)} ${asset.size} bytes`)
     .join('\n')}`
 );
