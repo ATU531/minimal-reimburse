@@ -65,6 +65,14 @@ assertIncludes(profileWxml, "profile-hero", "profile wxml");
 assertIncludes(profileWxml, "menu-icon", "profile wxml");
 assertNotIncludes(profileWxml, "PRO", "profile wxml");
 
+const settingsJs = read("miniprogram", "pages", "settings", "index.js");
+const settingsWxml = read("miniprogram", "pages", "settings", "index.wxml");
+assertIncludes(settingsJs, "发票资料设置", "settings js");
+assertIncludes(settingsJs, "原票附件保留说明", "settings js");
+assertNotIncludes(settingsJs, "默认导出 Excel", "settings js");
+assertNotIncludes(settingsJs, "打印设置", "settings js");
+assertNotIncludes(settingsWxml, "企业配置", "settings wxml");
+
 const exportCenterJs = read("miniprogram", "pages", "export-center", "index.js");
 const exportCenterWxml = read("miniprogram", "pages", "export-center", "index.wxml");
 assertIncludes(exportCenterJs, "正在合并原票附件", "export center js");
@@ -80,9 +88,11 @@ const allUiContent = [
   read("miniprogram", "pages", "invoice-detail", "index.wxml"),
   read("miniprogram", "pages", "export-center", "index.wxml"),
   read("miniprogram", "pages", "export-center", "index.js"),
+  settingsJs,
+  settingsWxml,
 ].join("\n");
 
-["PRO 会员", "电子签名 L3", "数字证书安全等级", "导出 Excel", "企业协作"].forEach(
+["PRO 会员", "电子签名 L3", "数字证书安全等级", "导出 Excel", "企业协作", "打印设置"].forEach(
   (token) => assertNotIncludes(allUiContent, token, "redesigned v1 UI")
 );
 

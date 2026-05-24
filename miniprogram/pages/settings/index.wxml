@@ -14,6 +14,6 @@
 
   <view class="tips-card">
     <view class="tips-title">配置说明</view>
-    <view class="tips-text">当前为静态页面示意，后续可接入企业配置、字段模板、打印样式和成员权限配置。</view>
+    <view class="tips-text">当前页面用于展示发票资料配置项，后续可接入常用抬头、收票说明和原票归档偏好。</view>
   </view>
 </view>
