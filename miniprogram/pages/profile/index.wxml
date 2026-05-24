@@ -1,29 +1,24 @@
-<view class="page">
-  <view class="profile-card">
-    <view class="avatar">票</view>
-    <view class="profile-main">
-      <view class="profile-name">票易理</view>
-      <view class="profile-subtitle">发票收集与原票 PDF 归档</view>
+<view class="profile-page">
+  <view class="profile-hero">
+    <view class="profile-glow"></view>
+    <view class="profile-main-row">
+      <view class="profile-avatar">票</view>
+      <view class="profile-main">
+        <view class="profile-name">票易理</view>
+        <view class="profile-subtitle">发票收集与原票 PDF 归档</view>
+      </view>
+    </view>
+
+    <view class="profile-stat-grid">
+      <view class="profile-stat" wx:for="{{profileStats}}" wx:key="label" wx:for-item="item">
+        <view class="profile-stat-value">{{item.value}}</view>
+        <view class="profile-stat-label">{{item.label}}</view>
+      </view>
     </view>
   </view>
 
-  <view class="stats-row">
-    <view class="stat-card">
-      <view class="stat-value">2</view>
-      <view class="stat-label">常用抬头</view>
-    </view>
-    <view class="stat-card">
-      <view class="stat-value">5</view>
-      <view class="stat-label">导出模板</view>
-    </view>
-    <view class="stat-card">
-      <view class="stat-value">9</view>
-      <view class="stat-label">常用科目</view>
-    </view>
-  </view>
-
-  <view class="group-card" wx:for="{{menuGroups}}" wx:key="id" wx:for-item="group">
-    <view class="group-title">{{group.title}}</view>
+  <view class="menu-group" wx:for="{{menuGroups}}" wx:key="id" wx:for-item="group">
+    <view class="menu-group-title">{{group.title}}</view>
     <view
       class="menu-item"
       wx:for="{{group.items}}"
@@ -33,7 +28,11 @@
       data-page="{{entry.page}}"
       bindtap="handleTap"
     >
-      <view class="menu-label">{{entry.label}}</view>
+      <image class="menu-icon" src="{{entry.icon}}" mode="aspectFit"></image>
+      <view class="menu-main">
+        <view class="menu-label">{{entry.label}}</view>
+      </view>
+      <view class="menu-value" wx:if="{{entry.value}}">{{entry.value}}</view>
       <view class="menu-arrow">›</view>
     </view>
   </view>

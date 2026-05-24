@@ -1,28 +1,60 @@
 Page({
   data: {
+    profileStats: [
+      { label: "常用抬头", value: "2" },
+      { label: "导出模板", value: "1" },
+      { label: "归档方式", value: "PDF" },
+    ],
     menuGroups: [
       {
         id: "invoice",
         title: "发票资料",
         items: [
-          { label: "发票抬头", page: "/pages/settings/index?section=title" },
-          { label: "收票说明", page: "/pages/settings/index?section=email" },
+          {
+            label: "发票抬头",
+            value: "已设2个",
+            icon: "/images/icons/ui-building.svg",
+            page: "/pages/settings/index?section=title",
+          },
+          {
+            label: "收票说明与指引",
+            value: "可查看",
+            icon: "/images/icons/ui-guide.svg",
+            page: "/pages/settings/index?section=email",
+          },
         ],
       },
       {
         id: "export",
         title: "导出设置",
         items: [
-          { label: "PDF 导出", page: "/pages/export-center/index?type=pdf" },
+          {
+            label: "PDF 导出模板",
+            value: "原票归档",
+            icon: "/images/icons/ui-pdf.svg",
+            page: "/pages/export-center/index?type=pdf",
+          },
         ],
       },
       {
         id: "support",
         title: "服务支持",
         items: [
-          { label: "在线客服" },
-          { label: "常见问题" },
-          { label: "联系我们" },
+          {
+            label: "在线客服",
+            value: "",
+            icon: "/images/icons/ui-service.svg",
+          },
+          {
+            label: "常见问题",
+            value: "",
+            icon: "/images/icons/ui-question.svg",
+          },
+          {
+            label: "联系我们",
+            value: "",
+            icon: "/images/icons/ui-phone.svg",
+          },
         ],
       },
     ],
