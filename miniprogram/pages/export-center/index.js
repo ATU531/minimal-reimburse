@@ -6,13 +6,13 @@ Page({
     scopeType: "filtered_result",
     scopeId: "",
     currentView: {
-      title: "PDF 导出",
-      subtitle: "将原始发票图片或 PDF 合并为一个归档文件",
+      title: "发票原票 PDF 导出清单",
+      subtitle: "正在合并原票附件，生成可转发 PDF 文件",
     },
     viewMap: {
       pdf: {
-        title: "PDF 导出",
-        subtitle: "将原始发票图片或 PDF 合并为一个归档文件",
+        title: "发票原票 PDF 导出清单",
+        subtitle: "导出记录将展示在导出中心",
       },
     },
     formatOptions: [{ label: "PDF", value: "pdf" }],

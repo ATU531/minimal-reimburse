@@ -1,7 +1,16 @@
-<view class="page">
-  <view class="hero-card">
-    <view class="hero-title">{{currentView.title}}</view>
-    <view class="hero-desc">{{currentView.subtitle}}</view>
+<view class="export-page">
+  <view class="export-preview-card">
+    <view class="preview-title">{{currentView.title}}</view>
+    <view class="preview-subtitle">{{currentView.subtitle}}</view>
+    <view class="preview-sheet">
+      <view class="sheet-line sheet-line-title"></view>
+      <view class="sheet-grid">
+        <view></view><view></view><view></view><view></view>
+      </view>
+      <view class="sheet-table">
+        <view></view><view></view><view></view>
+      </view>
+    </view>
   </view>
 
   <view class="section-card">
@@ -30,7 +39,7 @@
         </view>
       </view>
       <view class="task-item" wx:for="{{exportTasks}}" wx:key="title" wx:for-item="item">
-        <view>
+        <view class="task-main">
           <view class="task-title">{{item.title}}</view>
           <view class="task-desc">{{item.desc}}</view>
         </view>

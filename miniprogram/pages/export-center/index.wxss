@@ -1,79 +1,112 @@
 page {
-  background: #f4f7fb;
+  background: #F4F7FB;
 }
 
-.page {
-  padding: 24rpx 24rpx 180rpx;
-  font-family: PingFang SC;
+.export-page {
+  padding: 24rpx 32rpx 180rpx;
 }
 
-.hero-card,
+.export-preview-card,
 .section-card {
-  padding: 30rpx;
-  border-radius: 30rpx;
-  background: #ffffff;
-  box-shadow: 0 10rpx 30rpx rgba(16, 24, 40, 0.05);
+  padding: 34rpx;
+  border-radius: 42rpx;
+  background: #FFFFFF;
+  border: 2rpx solid #E8EDF5;
+  box-shadow: 0 18rpx 40rpx rgba(15, 23, 42, 0.04);
 }
 
-.hero-card {
-  background: linear-gradient(135deg, #ffffff 0%, #edf2ff 100%);
-}
-
-.hero-title {
-  font-size: 38rpx;
-  font-weight: 600;
-  color: #101828;
-}
-
-.hero-desc {
-  margin-top: 14rpx;
-  font-size: 24rpx;
-  line-height: 1.7;
-  color: #667085;
-}
-
-.section-card {
-  margin-top: 22rpx;
-}
-
+.preview-title,
 .section-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #101828;
+  font-size: 32rpx;
+  font-weight: 900;
+  color: #1F2937;
+  line-height: 1.35;
 }
 
-.format-row {
-  margin-top: 18rpx;
-  display: flex;
-  gap: 14rpx;
+.preview-subtitle {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: #8DA0BB;
 }
 
-.format-pill {
-  padding: 14rpx 22rpx;
+.preview-sheet {
+  margin-top: 28rpx;
+  padding: 34rpx;
+  border-radius: 18rpx;
+  background: #FFFFFF;
+  border: 2rpx solid #CBD5E1;
+  box-shadow: 0 14rpx 28rpx rgba(15, 23, 42, 0.08);
+}
+
+.sheet-line-title {
+  height: 24rpx;
+  background: #1F2937;
   border-radius: 999rpx;
-  background: #f7f8fa;
-  font-size: 24rpx;
-  color: #667085;
 }
 
-.format-pill-active {
-  background: #101828;
-  color: #ffffff;
+.sheet-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 24rpx;
 }
 
+.sheet-grid view {
+  flex: 1 1 45%;
+  min-width: 0;
+}
+
+.sheet-grid view,
+.sheet-table view {
+  height: 20rpx;
+  border-radius: 999rpx;
+  background: #E2E8F0;
+}
+
+.sheet-table {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 28rpx;
+  padding: 20rpx;
+  border-radius: 16rpx;
+  background: #F8FAFC;
+}
+
+.section-card {
+  margin-top: 24rpx;
+}
+
+.format-row,
 .task-list,
 .preset-list {
   display: flex;
   flex-direction: column;
   gap: 18rpx;
-  margin-top: 18rpx;
+  margin-top: 22rpx;
+}
+
+.format-pill {
+  align-self: flex-start;
+  padding: 14rpx 28rpx;
+  border-radius: 999rpx;
+  background: #F8FAFC;
+  color: #64748B;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.format-pill-active {
+  background: #4F46E5;
+  color: #FFFFFF;
 }
 
 .task-item,
 .preset-item {
   padding: 24rpx;
-  border-radius: 24rpx;
-  background: #f8fafc;
+  border-radius: 26rpx;
+  background: #F8FAFC;
 }
 
 .task-item {
@@ -82,56 +115,70 @@ page {
   gap: 18rpx;
 }
 
+.task-main {
+  flex: 1;
+  min-width: 0;
+}
+
 .task-title {
   font-size: 26rpx;
-  color: #101828;
+  color: #1F2937;
+  font-weight: 900;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+}
+
+.task-desc,
+.preset-item {
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: #64748B;
 }
 
 .task-desc {
   margin-top: 8rpx;
-  font-size: 22rpx;
-  line-height: 1.6;
-  color: #667085;
+  overflow-wrap: break-word;
 }
 
 .task-status {
   flex-shrink: 0;
   font-size: 22rpx;
-  color: #4f6ef7;
-}
-
-.preset-item {
-  font-size: 24rpx;
-  color: #344054;
+  color: #4F46E5;
+  font-weight: 800;
+  line-height: 1.5;
 }
 
 .bottom-actions {
   position: fixed;
-  left: 24rpx;
-  right: 24rpx;
-  bottom: calc(env(safe-area-inset-bottom) + 20rpx);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 22rpx 32rpx calc(env(safe-area-inset-bottom) + 22rpx);
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 2rpx solid #EEF2F7;
   display: flex;
-  gap: 16rpx;
+  gap: 18rpx;
 }
 
 .secondary-btn,
 .primary-btn {
   flex: 1;
   height: 88rpx;
-  border-radius: 24rpx;
+  border-radius: 28rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 26rpx;
+  font-weight: 900;
 }
 
 .secondary-btn {
-  background: #ffffff;
-  color: #344054;
-  box-shadow: 0 10rpx 30rpx rgba(16, 24, 40, 0.05);
+  background: #F8FAFC;
+  color: #475569;
 }
 
 .primary-btn {
-  background: linear-gradient(135deg, #4f6ef7 0%, #7c96ff 100%);
-  color: #ffffff;
+  background: #4F46E5;
+  color: #FFFFFF;
+  box-shadow: 0 18rpx 36rpx rgba(79, 70, 229, 0.22);
 }

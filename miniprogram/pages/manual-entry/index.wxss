@@ -1,108 +1,137 @@
 page {
-  background: #f4f7fb;
+  background: #F4F7FB;
 }
 
-.page {
-  padding: 24rpx 24rpx 160rpx;
-  font-family: PingFang SC;
+.manual-page {
+  padding: 24rpx 32rpx 170rpx;
 }
 
-.hero-card,
-.form-card {
-  padding: 30rpx;
-  border-radius: 30rpx;
-  background: #ffffff;
-  box-shadow: 0 10rpx 30rpx rgba(16, 24, 40, 0.05);
+.manual-sheet,
+.form-section {
+  background: #FFFFFF;
+  border: 2rpx solid #E8EDF5;
+  box-shadow: 0 18rpx 40rpx rgba(15, 23, 42, 0.04);
 }
 
-.hero-card {
-  background: linear-gradient(135deg, #ffffff 0%, #edf2ff 100%);
+.manual-sheet {
+  border-radius: 48rpx;
+  overflow: hidden;
 }
 
-.hero-title {
-  font-size: 40rpx;
-  font-weight: 600;
-  color: #101828;
+.sheet-handle {
+  width: 84rpx;
+  height: 10rpx;
+  border-radius: 999rpx;
+  background: #E2E8F0;
+  margin: 22rpx auto;
 }
 
-.hero-desc {
-  margin-top: 14rpx;
-  font-size: 24rpx;
-  line-height: 1.7;
-  color: #667085;
+.sheet-header {
+  padding: 0 36rpx 28rpx;
+  border-bottom: 2rpx solid #F1F5F9;
 }
 
-.form-card {
-  margin-top: 22rpx;
+.sheet-title {
+  font-size: 34rpx;
+  color: #1F2937;
+  font-weight: 900;
+}
+
+.sheet-subtitle {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8DA0BB;
+  line-height: 1.5;
+}
+
+.form-section {
+  margin: 28rpx;
+  padding: 28rpx;
+  border-radius: 32rpx;
+  box-shadow: none;
 }
 
 .section-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #101828;
+  font-size: 28rpx;
+  color: #1F2937;
+  font-weight: 900;
 }
 
 .field {
-  padding: 24rpx 0;
-  border-bottom: 1rpx solid #f2f4f7;
+  margin-top: 24rpx;
 }
 
-.field-last {
-  border-bottom: none;
-  padding-bottom: 0;
+.field-grid {
+  display: flex;
+  gap: 20rpx;
+}
+
+.field-half {
+  flex: 1;
+  min-width: 0;
 }
 
 .field-label {
-  font-size: 24rpx;
-  color: #475467;
+  margin-bottom: 12rpx;
+  font-size: 22rpx;
+  color: #64748B;
+  font-weight: 900;
 }
 
 .field-input,
 .picker-value,
 .field-textarea {
-  margin-top: 14rpx;
   width: 100%;
-  font-size: 28rpx;
-  color: #101828;
-  line-height: 1.6;
+  border-radius: 24rpx;
+  background: #F8FAFC;
+  border: 2rpx solid #E2E8F0;
+  color: #1F2937;
+  font-size: 26rpx;
+  line-height: 1.5;
+  padding: 20rpx 22rpx;
 }
 
 .field-input,
 .picker-value {
-  min-height: 44rpx;
+  min-height: 82rpx;
 }
 
 .field-textarea {
-  min-height: 160rpx;
+  min-height: 150rpx;
 }
 
 .field-input-error {
-  color: #d92d20;
+  border-color: #D92D20;
+  color: #D92D20;
 }
 
 .field-error {
   margin-top: 10rpx;
   font-size: 22rpx;
-  color: #d92d20;
+  color: #D92D20;
 }
 
 .submit-bar {
   position: fixed;
-  left: 24rpx;
-  right: 24rpx;
-  bottom: calc(env(safe-area-inset-bottom) + 20rpx);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 22rpx 32rpx calc(env(safe-area-inset-bottom) + 22rpx);
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 2rpx solid #EEF2F7;
 }
 
 .submit-btn {
-  height: 92rpx;
-  border-radius: 26rpx;
-  background: linear-gradient(135deg, #4f6ef7 0%, #7c96ff 100%);
-  color: #ffffff;
+  height: 88rpx;
+  border-radius: 28rpx;
+  background: #4F46E5;
+  color: #FFFFFF;
   font-size: 28rpx;
+  font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 18rpx 36rpx rgba(79, 110, 247, 0.22);
+  box-shadow: 0 18rpx 36rpx rgba(79, 70, 229, 0.22);
 }
 
 .submit-btn-disabled {
