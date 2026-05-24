@@ -41,7 +41,7 @@
     <view class="section-title">补充信息</view>
     <view class="field">
       <view class="field-label">购买方</view>
-      <input class="field-input" placeholder="企业名称或个人姓名" data-field="buyerName" bindinput="handleInput" value="{{form.buyerName}}" />
+      <input class="field-input" placeholder="抬头名称或个人姓名" data-field="buyerName" bindinput="handleInput" value="{{form.buyerName}}" />
     </view>
     <view class="field">
       <view class="field-label">销售方</view>
@@ -61,7 +61,7 @@
     </view>
     <view class="field field-last">
       <view class="field-label">备注</view>
-      <textarea class="field-textarea" placeholder="补充用途、报销人或特殊说明" data-field="remark" bindinput="handleInput">{{form.remark}}</textarea>
+      <textarea class="field-textarea" placeholder="补充用途、归档说明或特殊备注" data-field="remark" bindinput="handleInput">{{form.remark}}</textarea>
     </view>
   </view>
 

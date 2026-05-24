@@ -52,9 +52,9 @@ const formatDateText = (dateText) => {
 const getSourceLabel = (sourceType) => {
   const sourceMap = {
     chat: "聊天记录",
-    card: "微信卡包",
+    card: "历史导入",
     local: "本地文件",
-    scan: "扫码录入",
+    scan: "智能识别",
     album: "手机相册",
     ocr: "智能识别",
     manual: "手动录入",
@@ -337,7 +337,6 @@ const getExportStatusLabel = (status) => {
 const getExportFormatLabel = (format) => {
   const formatMap = {
     pdf: "PDF",
-    excel: "Excel",
     zip: "ZIP",
   };
   return formatMap[format] || "文件";
@@ -577,6 +576,8 @@ const listInvoices = async (event) => {
       reimburseStatus: invoice.reimburseStatus,
       printStatus: invoice.printStatus,
       exportStatus: invoice.exportStatus,
+      hasOriginalAttachment: getSupportedExportAttachments(invoice).length > 0,
+      attachmentTypes: getInvoiceAttachmentTypes(invoice),
       tags: buildInvoiceTags(invoice),
       createdAt: invoice.createdAt,
       updatedAt: invoice.updatedAt,
@@ -679,6 +680,8 @@ const getInvoiceDetail = async (event) => {
       reimburseStatus: invoice.reimburseStatus,
       printStatus: invoice.printStatus,
       exportStatus: invoice.exportStatus,
+      hasOriginalAttachment: getSupportedExportAttachments(invoice).length > 0,
+      attachmentTypes: getInvoiceAttachmentTypes(invoice),
       tags: buildInvoiceTags(invoice),
       timeline: buildInvoiceTimeline(invoice),
       createdAt: invoice.createdAt,
@@ -1231,6 +1234,109 @@ const markInvoicesAsExported = async (openid, invoiceIds) => {
         },
       });
   }
+};
+
+const SUPPORTED_EXPORT_ATTACHMENT_TYPES = ["image", "pdf"];
+
+const getInvoiceAttachmentTypes = (invoice) => {
+  const typeMap = {};
+  (invoice.attachments || []).forEach((attachment) => {
+    if (attachment && attachment.fileID && attachment.type) {
+      typeMap[attachment.type] = true;
+    }
+  });
+  return Object.keys(typeMap);
+};
+
+const getSupportedExportAttachments = (invoice) => {
+  return (invoice.attachments || []).filter(
+    (attachment) =>
+      attachment &&
+      attachment.fileID &&
+      SUPPORTED_EXPORT_ATTACHMENT_TYPES.includes(attachment.type)
+  );
+};
+
+const buildUnsupportedExportInvoices = (invoices) => {
+  return invoices
+    .filter((invoice) => getSupportedExportAttachments(invoice).length === 0)
+    .map((invoice) => ({
+      _id: invoice._id,
+      title: invoice.title || "未命名发票",
+      attachmentTypes: getInvoiceAttachmentTypes(invoice),
+    }));
+};
+
+const downloadCloudFileBuffer = async (fileID) => {
+  const downloadResult = await cloud.downloadFile({ fileID });
+  if (!downloadResult || !downloadResult.fileContent) {
+    throw new Error("下载发票原文件失败");
+  }
+  return Buffer.isBuffer(downloadResult.fileContent)
+    ? downloadResult.fileContent
+    : Buffer.from(downloadResult.fileContent);
+};
+
+const isPngBuffer = (buffer) => {
+  return (
+    buffer.length > 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  );
+};
+
+const isJpegBuffer = (buffer) => {
+  return buffer.length > 2 && buffer[0] === 0xff && buffer[1] === 0xd8;
+};
+
+const embedImageByType = async (pdfDoc, buffer) => {
+  if (isPngBuffer(buffer)) {
+    return await pdfDoc.embedPng(buffer);
+  }
+  if (isJpegBuffer(buffer)) {
+    return await pdfDoc.embedJpg(buffer);
+  }
+  const error = new Error("仅支持 JPG、PNG 图片发票导出");
+  error.errCode = "EXPORT_UNSUPPORTED_ATTACHMENT";
+  throw error;
+};
+
+const drawImageInBox = (page, image, box) => {
+  const scale = Math.min(box.width / image.width, box.height / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  const x = box.x + (box.width - width) / 2;
+  const y = box.y + (box.height - height) / 2;
+  page.drawImage(image, { x, y, width, height });
+};
+
+const addImagePage = (pdfDoc, images) => {
+  const pageWidth = 595.28;
+  const pageHeight = 841.89;
+  const margin = 30;
+  const gap = 20;
+  const usableWidth = pageWidth - margin * 2;
+  const halfHeight = (pageHeight - margin * 2 - gap) / 2;
+  const page = pdfDoc.addPage([pageWidth, pageHeight]);
+  const boxes = [
+    {
+      x: margin,
+      y: margin + halfHeight + gap,
+      width: usableWidth,
+      height: halfHeight,
+    },
+    {
+      x: margin,
+      y: margin,
+      width: usableWidth,
+      height: halfHeight,
+    },
+  ];
+  images.forEach((image, index) => {
+    drawImageInBox(page, image, boxes[index]);
+  });
 };
 
 const progressExportJob = async (openid, job) => {
@@ -1848,7 +1954,7 @@ const parseWechatCardInvoice = (info) => {
 };
 
 const generateExportPdf = async (event) => {
-  const invoiceIds = event.invoiceIds || [];
+  const invoiceIds = event.invoiceIds || (event.data && event.data.invoiceIds) || [];
   if (!invoiceIds.length) {
     return { success: false, errMsg: "请选择要导出的发票" };
   }
@@ -1866,114 +1972,129 @@ const generateExportPdf = async (event) => {
     return { success: false, errMsg: "未找到发票数据" };
   }
   const invoices = invoicesResult.data;
-  console.log("[Export PDF] Found", invoices.length, "invoices");
+  const unsupportedInvoices = buildUnsupportedExportInvoices(invoices);
+  if (unsupportedInvoices.length) {
+    return {
+      success: false,
+      errCode: "EXPORT_UNSUPPORTED_ATTACHMENT",
+      errMsg: "所选发票缺少可导出的原始图片或PDF",
+      data: {
+        unsupportedInvoices,
+      },
+    };
+  }
 
-  const attachmentFileIDs = [];
-  invoices.forEach((inv) => {
-    if (Array.isArray(inv.attachments)) {
-      inv.attachments.forEach((att) => {
-        if (att.fileID && att.type === "image") {
-          attachmentFileIDs.push(att.fileID);
-        }
-      });
+  const { PDFDocument } = require("pdf-lib");
+  const pdfDoc = await PDFDocument.create();
+  pdfDoc.setTitle("发票导出 - 票易理");
+  pdfDoc.setAuthor("票易理小程序");
+
+  let pendingImages = [];
+  let imageCount = 0;
+  let pdfAttachmentCount = 0;
+
+  const flushPendingImages = () => {
+    if (!pendingImages.length) {
+      return;
     }
-  });
+    addImagePage(pdfDoc, pendingImages);
+    pendingImages = [];
+  };
 
-  console.log("[Export PDF] Attachment fileIDs:", attachmentFileIDs.length);
+  for (let i = 0; i < invoices.length; i++) {
+    const invoice = invoices[i];
+    const attachments = getSupportedExportAttachments(invoice);
+    for (let j = 0; j < attachments.length; j++) {
+      const attachment = attachments[j];
+      let fileBuffer;
+      try {
+        fileBuffer = await downloadCloudFileBuffer(attachment.fileID);
+      } catch (error) {
+        console.error("[Export PDF] Download file failed:", error.message);
+        return {
+          success: false,
+          errCode: "EXPORT_FILE_DOWNLOAD_FAILED",
+          errMsg: `下载发票原文件失败：${invoice.title || "未命名发票"}`,
+        };
+      }
 
-  const imageBuffers = [];
-  if (attachmentFileIDs.length) {
-    const tempUrlResult = await cloud.getTempFileURL({
-      fileList: attachmentFileIDs,
-    });
-    for (const fileItem of tempUrlResult.fileList) {
-      if (fileItem.tempFileURL) {
+      if (attachment.type === "image") {
         try {
-          const https = require("https");
-          const http = require("http");
-          const url = fileItem.tempFileURL;
-          const mod = url.startsWith("https") ? https : http;
-          const imgBuf = await new Promise((resolve, reject) => {
-            mod.get(url, (res) => {
-              const chunks = [];
-              res.on("data", (c) => chunks.push(c));
-              res.on("end", () => resolve(Buffer.concat(chunks)));
-              res.on("error", reject);
-            }).on("error", reject);
+          const image = await embedImageByType(pdfDoc, fileBuffer);
+          pendingImages.push(image);
+          imageCount += 1;
+          if (pendingImages.length === 2) {
+            flushPendingImages();
+          }
+        } catch (error) {
+          console.error("[Export PDF] Embed image failed:", error.message);
+          return {
+            success: false,
+            errCode: "EXPORT_UNSUPPORTED_ATTACHMENT",
+            errMsg: `发票图片格式不支持：${invoice.title || "未命名发票"}`,
+            data: {
+              unsupportedInvoices: [
+                {
+                  _id: invoice._id,
+                  title: invoice.title || "未命名发票",
+                  attachmentTypes: getInvoiceAttachmentTypes(invoice),
+                },
+              ],
+            },
+          };
+        }
+      }
+
+      if (attachment.type === "pdf") {
+        flushPendingImages();
+        try {
+          const sourcePdf = await PDFDocument.load(fileBuffer, {
+            ignoreEncryption: true,
           });
-          imageBuffers.push(imgBuf);
-          console.log("[Export PDF] Downloaded image, size:", imgBuf.length);
-        } catch (e) {
-          console.error("[Export PDF] Download image failed:", e.message);
+          const copiedPages = await pdfDoc.copyPages(
+            sourcePdf,
+            sourcePdf.getPageIndices()
+          );
+          copiedPages.forEach((page) => pdfDoc.addPage(page));
+          pdfAttachmentCount += 1;
+        } catch (error) {
+          console.error("[Export PDF] Merge PDF failed:", error.message);
+          return {
+            success: false,
+            errCode: "EXPORT_UNSUPPORTED_ATTACHMENT",
+            errMsg: `原始PDF无法合并：${invoice.title || "未命名发票"}`,
+            data: {
+              unsupportedInvoices: [
+                {
+                  _id: invoice._id,
+                  title: invoice.title || "未命名发票",
+                  attachmentTypes: getInvoiceAttachmentTypes(invoice),
+                },
+              ],
+            },
+          };
         }
       }
     }
   }
 
-  const PDFDocument = require("pdfkit");
-  const chunks = [];
-  const doc = new PDFDocument({
-    size: "A4",
-    margins: { top: 30, bottom: 30, left: 30, right: 30 },
-    autoFirstPage: false,
-    info: {
-      Title: "发票导出 - 轻票夹",
-      Author: "轻票夹小程序",
-    },
-  });
-  doc.on("data", (chunk) => chunks.push(chunk));
-  const pdfPromise = new Promise((resolve, reject) => {
-    doc.on("end", resolve);
-    doc.on("error", reject);
-  });
-
-  const pageW = 595.28;
-  const pageH = 841.89;
-  const margin = 30;
-  const gap = 20;
-  const usableW = pageW - margin * 2;
-  const halfH = (pageH - margin * 2 - gap) / 2;
-
-  if (imageBuffers.length > 0) {
-    for (let i = 0; i < imageBuffers.length; i += 2) {
-      doc.addPage({ size: "A4", margins: { top: margin, bottom: margin, left: margin, right: margin } });
-
-      const topImg = imageBuffers[i];
-      if (topImg) {
-        doc.image(topImg, margin, margin, {
-          fit: [usableW, halfH],
-          align: "center",
-          valign: "center",
-        });
-      }
-
-      if (i + 1 < imageBuffers.length) {
-        const bottomImg = imageBuffers[i + 1];
-        const bottomY = margin + halfH + gap;
-        doc.image(bottomImg, margin, bottomY, {
-          fit: [usableW, halfH],
-          align: "center",
-          valign: "center",
-        });
-      }
-    }
-  } else {
-    doc.addPage({ size: "A4" });
-    doc.fontSize(16).font("Helvetica").fillColor("#999999");
-    doc.text("No invoice images found.", { align: "center" });
-    doc.moveDown(1);
-    doc.fontSize(12).text("Attachments were not saved when these invoices were created.", { align: "center" });
-    doc.moveDown(0.5);
-    doc.text("New invoices with OCR recognition will include images.", { align: "center" });
+  flushPendingImages();
+  const pageCount = pdfDoc.getPageCount();
+  if (pageCount === 0) {
+    return {
+      success: false,
+      errCode: "EXPORT_UNSUPPORTED_ATTACHMENT",
+      errMsg: "所选发票没有可导出的原始文件",
+    };
   }
 
-  doc.end();
-  await pdfPromise;
-  const pdfBuffer = Buffer.concat(chunks);
+  const pdfBytes = await pdfDoc.save();
+  const pdfBuffer = Buffer.from(pdfBytes);
   console.log("[Export PDF] Buffer size:", pdfBuffer.length);
 
   const timestamp = Date.now();
-  const cloudPath = `exports/${openid}/${timestamp}-invoices.pdf`;
+  const fileName = `invoices-${timestamp}.pdf`;
+  const cloudPath = `exports/${openid}/${fileName}`;
   const uploadResult = await cloud.uploadFile({
     cloudPath: cloudPath,
     fileContent: pdfBuffer,
@@ -1983,7 +2104,8 @@ const generateExportPdf = async (event) => {
   const tempUrlResult = await cloud.getTempFileURL({
     fileList: [uploadResult.fileID],
   });
-  const tempUrl = tempUrlResult.fileList[0] && tempUrlResult.fileList[0].tempFileURL;
+  const tempUrl =
+    tempUrlResult.fileList[0] && tempUrlResult.fileList[0].tempFileURL;
   console.log("[Export PDF] Temp URL obtained");
 
   await markInvoicesAsExported(openid, invoiceIds);
@@ -1993,10 +2115,12 @@ const generateExportPdf = async (event) => {
     data: {
       fileID: uploadResult.fileID,
       tempFileURL: tempUrl,
-      fileName: `invoices-${timestamp}.pdf`,
+      fileName,
       fileSize: pdfBuffer.length,
       invoiceCount: invoices.length,
-      imageCount: imageBuffers.length,
+      pageCount,
+      imageCount,
+      pdfAttachmentCount,
     },
   };
 };
@@ -2067,124 +2191,66 @@ exports.main = async (event, context) => {
 };
 
 const OCR_CONFIG = {
-  provider: "tencent",
-  providers: {
-    mock: {
-      name: "本地模拟",
-      enabled: true,
+  name: "腾讯云OCR",
+  secretId: process.env.TENCENT_SECRET_ID || "",
+  secretKey: process.env.TENCENT_SECRET_KEY || "",
+  region: process.env.TENCENT_REGION || "ap-beijing",
+};
+
+const getTencentOcrConfig = () => {
+  if (!OCR_CONFIG.secretId || !OCR_CONFIG.secretKey) {
+    const missingKeys = [];
+    if (!OCR_CONFIG.secretId) {
+      missingKeys.push("TENCENT_SECRET_ID");
+    }
+    if (!OCR_CONFIG.secretKey) {
+      missingKeys.push("TENCENT_SECRET_KEY");
+    }
+    const error = new Error(`腾讯云OCR未配置：${missingKeys.join("、")}`);
+    error.errCode = "OCR_CONFIG_MISSING";
+    throw error;
+  }
+  return OCR_CONFIG;
+};
+
+const buildOcrErrorResponse = (error) => {
+  return {
+    success: false,
+    errMsg: error.message || "OCR服务异常，请稍后重试",
+    errCode: error.errCode || error.code || "OCR_EXCEPTION",
+    errorDetail: {
+      name: error.name,
+      message: error.message,
     },
-    tencent: {
-      name: "腾讯云OCR",
-      enabled: true,
-      ...(function () {
-        try {
-          const localConfig = require("./config.local.json");
-          return {
-            secretId: localConfig.tencent.secretId,
-            secretKey: localConfig.tencent.secretKey,
-            region: localConfig.tencent.region || "ap-beijing",
-          };
-        } catch (e) {
-          console.warn(
-            "[Init] config.local.json not found, using environment variables or mock mode"
-          );
-          return {
-            secretId: process.env.TENCENT_SECRET_ID || "",
-            secretKey: process.env.TENCENT_SECRET_KEY || "",
-            region: process.env.TENCENT_REGION || "ap-beijing",
-          };
-        }
-      })(),
-    },
-    baidu: {
-      name: "百度云OCR",
-      enabled: false,
-      apiKey: "",
-      secretKey: "",
-    },
-  },
+  };
 };
 
 const ocrInvoice = async (event) => {
   try {
     const payload = event.data || {};
     const fileID = payload.fileID;
-    const provider =
-      (payload && payload.provider) || OCR_CONFIG.provider;
     console.log("=== OCR Start ===");
     console.log("fileID:", fileID);
-    console.log("provider:", provider);
+    console.log("provider: tencent");
     if (!fileID) {
       return {
         success: false,
         errMsg: "fileID is required",
+        errCode: "FILE_ID_REQUIRED",
       };
     }
-    let result;
-    switch (provider) {
-      case "tencent":
-        result = await recognizeWithTencent(fileID, payload);
-        break;
-      case "baidu":
-        result = await recognizeWithBaidu(fileID, payload);
-        break;
-      case "mock":
-      default:
-        result = await recognizeWithMock(fileID, payload);
-        break;
-    }
-    return result;
+    return await recognizeWithTencent(fileID, payload);
   } catch (error) {
     console.error("=== OCR Exception ===");
     console.error("error:", error);
     console.error("error message:", error.message);
-    return {
-      success: false,
-      errMsg: error.message || "OCR服务异常，请稍后重试",
-      errCode: "EXCEPTION",
-      errorDetail: {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      },
-    };
+    return buildOcrErrorResponse(error);
   }
-};
-
-const recognizeWithMock = async (fileID, payload) => {
-  console.log("[Mock OCR] Using mock recognition mode");
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-  const mockData = {
-    title: "运输服务*客运服务费",
-    amount: 7226,
-    totalAmount: 7226,
-    issueDate: "2024-09-05",
-    buyerName: "北京中科大洋信息技术有限公司",
-    sellerName: "北京滴滴出行科技有限公司",
-    invoiceCode: "",
-    invoiceNumber: "24117000000537859577",
-    confidence: 95,
-    invoiceType: "electronic_general",
-    fields: {
-      raw_info: { mode: "mock", note: "模拟数据用于开发测试" },
-    },
-  };
-  console.log("[Mock OCR] Returning mock data:", JSON.stringify(mockData));
-  return {
-    success: true,
-    data: mockData,
-    provider: "mock",
-  };
 };
 
 const recognizeWithTencent = async (fileID, payload) => {
   console.log("[Tencent OCR] Starting RecognizeGeneralInvoice (supports PDF)");
-  const config = OCR_CONFIG.providers.tencent;
-  if (!config.enabled || !config.secretId || !config.secretKey) {
-    throw new Error(
-      "腾讯云OCR未配置，请在云函数中设置secretId和secretKey"
-    );
-  }
+  const config = getTencentOcrConfig();
   const maskedSecretId =
     config.secretId.substring(0, 8) +
     "****" +
@@ -2435,103 +2501,6 @@ const parseTencentVatInvoiceInfos = (vatInfos) => {
         : "vat_common_paper",
     fields: {
       raw_vat_infos: vatInfos,
-    },
-  };
-};
-
-const recognizeWithBaidu = async (fileID, payload) => {
-  console.log("[Baidu OCR] Starting Baidu Cloud OCR");
-  const config = OCR_CONFIG.providers.baidu;
-  if (!config.enabled || !config.apiKey || !config.secretKey) {
-    throw new Error(
-      "百度云OCR未配置，请在云函数中设置apiKey和secretKey"
-    );
-  }
-  const downloadResult = await cloud.downloadFile({
-    fileID: fileID,
-  });
-  if (!downloadResult || !downloadResult.fileContent) {
-    throw new Error("download file failed or empty content");
-  }
-  const buffer = downloadResult.fileContent;
-  const base64Image = Buffer.isBuffer(buffer)
-    ? buffer.toString("base64")
-    : Buffer.from(buffer).toString("base64");
-  const accessTokenRes = await fetch(
-    `https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${config.apiKey}&client_secret=${config.secretKey}`,
-    { method: "POST" }
-  );
-  const tokenData = await accessTokenRes.json();
-  if (!tokenData.access_token) {
-    throw new Error(
-      `获取百度Token失败: ${tokenData.error_msg || "unknown"}`
-    );
-  }
-  const ocrResponse = await fetch(
-    `https://aip.baidubce.com/rest/2.0/ocr/v1/vat_invoice?access_token=${tokenData.access_token}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `image=${encodeURIComponent(base64Image)}`,
-    }
-  );
-  const ocrResult = await ocrResponse.json();
-  console.log("[Baidu OCR] Response:", JSON.stringify(ocrResult));
-  if (ocrResult.error_code) {
-    throw new Error(`百度OCR错误: ${ocrResult.error_msg}`);
-  }
-  if (
-    !ocrResult.words_result ||
-    !ocrResult.words_result.InvoiceNum
-  ) {
-    return {
-      success: false,
-      errMsg: "未能识别到发票信息",
-      errCode: "BAIDU_NO_RESULT",
-      rawResponse: ocrResult,
-    };
-  }
-  const parsedData = parseBaiduOcrResult(ocrResult.words_result);
-  return {
-    success: true,
-    data: parsedData,
-    provider: "baidu",
-  };
-};
-
-const parseBaiduOcrResult = (wordsResult) => {
-  if (!wordsResult) return null;
-  const getFieldValue = (fieldName) => {
-    const field = wordsResult[fieldName];
-    if (!field || !field.words) return "";
-    return field.words.trim();
-  };
-  const parseAmount = (amountStr) => {
-    if (!amountStr) return 0;
-    const cleaned = String(amountStr).replace(/[^\d.-]/g, "").trim();
-    const amount = parseFloat(cleaned);
-    if (isNaN(amount)) return 0;
-    return Math.round(amount * 100);
-  };
-  return {
-    title: getFieldValue("InvoiceTypeOrg") || "发票",
-    amount:
-      parseAmount(getFieldValue("TotalAmount")) ||
-      parseAmount(getFieldValue("AmountWithTax")) ||
-      0,
-    totalAmount:
-      parseAmount(getFieldValue("TotalAmount")) ||
-      parseAmount(getFieldValue("AmountWithTax")) ||
-      0,
-    issueDate: getFieldValue("InvoiceDate") || "",
-    buyerName: getFieldValue("PurchaserName") || "",
-    sellerName: getFieldValue("SellerName") || "",
-    invoiceCode: getFieldValue("InvoiceCode") || "",
-    invoiceNumber: getFieldValue("InvoiceNum") || "",
-    confidence: Math.floor(Math.random() * 8) + 92,
-    invoiceType: "electronic_general",
-    fields: {
-      raw_baidu: wordsResult,
     },
   };
 };

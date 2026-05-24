@@ -21,12 +21,12 @@
   </view>
 
   <view class="section-card">
-    <view class="section-title">导出任务</view>
+    <view class="section-title">导出记录</view>
     <view class="task-list">
       <view class="task-item" wx:if="{{!exportTasks.length}}">
         <view>
-          <view class="task-title">暂无导出任务</view>
-          <view class="task-desc">点击底部生成文件，创建第一条导出任务。</view>
+          <view class="task-title">暂无导出记录</view>
+          <view class="task-desc">已生成的 PDF 会在这里显示。</view>
         </view>
       </view>
       <view class="task-item" wx:for="{{exportTasks}}" wx:key="title" wx:for-item="item">
@@ -47,7 +47,7 @@
   </view>
 
   <view class="bottom-actions">
-    <view class="secondary-btn" data-label="预览导出内容" bindtap="handleTap">{{loading ? '刷新中...' : '刷新任务'}}</view>
-    <view class="primary-btn" data-label="生成导出文件" bindtap="handleTap">{{creating ? '生成中...' : '生成文件'}}</view>
+    <view class="secondary-btn" data-label="刷新记录" bindtap="handleTap">{{loading ? '刷新中...' : '刷新记录'}}</view>
+    <view class="primary-btn" data-label="生成 PDF" bindtap="handleTap">{{creating ? '生成中...' : '生成 PDF'}}</view>
   </view>
 </view>

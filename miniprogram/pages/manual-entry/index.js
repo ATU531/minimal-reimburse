@@ -16,7 +16,6 @@ Page({
     sourceOptions: [
       { label: "手动录入", value: "manual" },
       { label: "聊天记录补录", value: "chat" },
-      { label: "微信卡包补录", value: "card" },
       { label: "智能识别修正", value: "ocr" },
     ],
     form: {
@@ -85,7 +84,7 @@ Page({
       reimburseStatus: "unreimbursed",
       printStatus: "unprinted",
       exportStatus: "none",
-      tags: ["待核验", "可导出", "未报销", "未打印"],
+      tags: ["待核验", "可导出"],
       timeline: [
         {
           title: "保存到本地票夹",

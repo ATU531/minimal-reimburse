@@ -16,7 +16,7 @@
     "backgroundColor": "#F4F7FB",
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#F4F7FB",
-    "navigationBarTitleText": "轻票夹",
+    "navigationBarTitleText": "票易理",
     "navigationBarTextStyle": "black"
   },
   "tabBar": {
@@ -36,12 +36,6 @@
         "text": "票夹",
         "iconPath": "images/icons/goods.png",
         "selectedIconPath": "images/icons/goods-active.png"
-      },
-      {
-        "pagePath": "pages/reimburse/index",
-        "text": "报销",
-        "iconPath": "images/icons/business.png",
-        "selectedIconPath": "images/icons/business-active.png"
       },
       {
         "pagePath": "pages/profile/index",

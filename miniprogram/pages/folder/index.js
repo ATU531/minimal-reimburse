@@ -1,5 +1,4 @@
 const LOCAL_INVOICES_STORAGE_KEY = "localDraftInvoices";
-const PENDING_REIMBURSEMENT_STORAGE_KEY = "pendingReimbursementTarget";
 
 Page({
   data: {
@@ -9,14 +8,11 @@ Page({
     selectedCount: 2,
     loading: false,
     syncingLocalDrafts: false,
-    pendingReimbursementTarget: null,
     allInvoices: [],
     filters: [
       { id: "all", label: "全部" },
       { id: "month", label: "本月" },
-      { id: "unreimbursed", label: "未报销" },
       { id: "ready", label: "可导出" },
-      { id: "printed", label: "已打印" },
     ],
     summaryCards: [
       { label: "待整理", value: "18" },
@@ -31,9 +27,9 @@ Page({
         type: "电子普票",
         amount: "¥268.00",
         date: "2026-03-27",
-        source: "聊天记录",
+        source: "聊天文件",
         owner: "上海知行科技有限公司",
-        tags: ["未报销", "未打印", "已识别"],
+        tags: ["已识别", "有原票"],
       },
       {
         id: "inv-002",
@@ -42,28 +38,24 @@ Page({
         type: "电子专票",
         amount: "¥3,980.00",
         date: "2026-03-24",
-        source: "微信卡包",
+        source: "智能识别",
         owner: "杭州云行信息技术有限公司",
-        tags: ["待核验", "可导出", "未报销"],
+        tags: ["待核验", "可导出"],
       },
       {
         id: "inv-003",
         selected: false,
-        title: "交通服务 · 出行报销",
+        title: "交通服务 · 出行票据",
         type: "电子普票",
         amount: "¥186.50",
         date: "2026-03-21",
         source: "智能识别",
         owner: "王芳",
-        tags: ["已报销", "已打印", "已归档"],
+        tags: ["已导出", "已归档"],
       },
     ],
   },
   onShow() {
-    this.setData({
-      pendingReimbursementTarget:
-        wx.getStorageSync(PENDING_REIMBURSEMENT_STORAGE_KEY) || null,
-    });
     this.syncLocalDrafts().finally(() => {
       this.fetchInvoices();
     });
@@ -80,13 +72,17 @@ Page({
       0
     );
     const exportableCount = invoices.filter(
-      (item) => item.exportStatus !== "exported"
+      (item) => item.hasOriginalAttachment && item.exportStatus !== "exported"
     ).length;
     return [
       { label: "待整理", value: String(pendingCount) },
       { label: "本月金额", value: this.formatAmount(amountTotal) },
       { label: "待导出", value: String(exportableCount) },
     ];
+  },
+  filterVisibleTags(tags) {
+    const hiddenTags = ["未报销", "报销中", "已报销", "未打印", "已打印"];
+    return (tags || []).filter((tag) => !hiddenTags.includes(tag));
   },
   normalizeInvoice(invoice) {
     return {
@@ -101,11 +97,13 @@ Page({
       invoiceNumber: invoice.invoiceNumber || "",
       source: invoice.sourceLabel,
       owner: invoice.buyerName || invoice.sellerName || "未命名抬头",
-      tags: invoice.tags || [],
+      tags: this.filterVisibleTags(invoice.tags),
       verifyStatus: invoice.verifyStatus,
       reimburseStatus: invoice.reimburseStatus,
       printStatus: invoice.printStatus,
       exportStatus: invoice.exportStatus,
+      hasOriginalAttachment: Boolean(invoice.hasOriginalAttachment),
+      attachmentTypes: invoice.attachmentTypes || [],
       createdAt: invoice.createdAt,
       updatedAt: invoice.updatedAt,
     };
@@ -124,11 +122,13 @@ Page({
       invoiceNumber: invoice.invoiceNumber || "",
       source: invoice.sourceLabel,
       owner: invoice.buyerName || invoice.sellerName || "未命名抬头",
-      tags: invoice.tags || [],
+      tags: this.filterVisibleTags(invoice.tags),
       verifyStatus: invoice.verifyStatus || "unverified",
       reimburseStatus: invoice.reimburseStatus || "unreimbursed",
       printStatus: invoice.printStatus || "unprinted",
       exportStatus: invoice.exportStatus || "none",
+      hasOriginalAttachment: false,
+      attachmentTypes: [],
       createdAt: invoice.createdAt,
       updatedAt: invoice.updatedAt,
     };
@@ -189,16 +189,8 @@ Page({
     const allInvoices = nextAllInvoices || this.data.allInvoices;
     const keyword = String(this.data.searchKeyword || "").trim().toLowerCase();
     let invoices = allInvoices;
-    if (filterId === "unreimbursed") {
-      invoices = allInvoices.filter(
-        (item) => item.reimburseStatus === "unreimbursed"
-      );
-    }
     if (filterId === "ready") {
       invoices = allInvoices.filter((item) => item.exportStatus !== "exported");
-    }
-    if (filterId === "printed") {
-      invoices = allInvoices.filter((item) => item.printStatus === "printed");
     }
     if (filterId === "month") {
       invoices = allInvoices.filter((item) => String(item.date || "").startsWith("2026-03"));
@@ -261,8 +253,8 @@ Page({
               Number(String(item.amount).replace(/[^\d.]/g, "")) * 100
             ),
             verifyStatus: item.tags.includes("已核验") ? "verified" : "unverified",
-            reimburseStatus: item.tags.includes("已报销") ? "reimbursed" : "unreimbursed",
-            printStatus: item.tags.includes("已打印") ? "printed" : "unprinted",
+            reimburseStatus: "unreimbursed",
+            printStatus: "unprinted",
             exportStatus: item.tags.includes("已导出") ? "exported" : "none",
           })
         );
@@ -319,12 +311,6 @@ Page({
     });
     this.fetchInvoices();
   },
-  clearPendingReimbursementTarget() {
-    wx.removeStorageSync(PENDING_REIMBURSEMENT_STORAGE_KEY);
-    this.setData({
-      pendingReimbursementTarget: null,
-    });
-  },
   selectFilter(e) {
     const activeFilter = e.currentTarget.dataset.id;
     this.setData({
@@ -355,59 +341,6 @@ Page({
   },
   handleAction(e) {
     const { label, page } = e.currentTarget.dataset;
-    if (label === "加入报销单") {
-      const selectedInvoices = this.data.invoices.filter((item) => item.selected);
-      if (!selectedInvoices.length) {
-        wx.showToast({
-          title: "请先勾选发票",
-          icon: "none",
-        });
-        return;
-      }
-      if (selectedInvoices.some((item) => String(item.id).startsWith("local-"))) {
-        wx.showToast({
-          title: "请等待本地草稿同步后再创建报销单",
-          icon: "none",
-        });
-        return;
-      }
-      wx.showLoading({
-        title: "生成草稿中",
-        mask: true,
-      });
-      const pendingTarget = this.data.pendingReimbursementTarget;
-      wx.cloud
-        .callFunction({
-          name: "quickstartFunctions",
-          data: {
-            type: pendingTarget ? "addInvoicesToReimbursement" : "createReimbursementDraft",
-            id: pendingTarget && pendingTarget.id,
-            invoiceIds: selectedInvoices.map((item) => item.id),
-            title: pendingTarget ? pendingTarget.title : "票夹新建报销单",
-          },
-        })
-        .then((response) => {
-          const result = response.result;
-          if (!result || result.success === false || !(result.data && result.data._id)) {
-            throw new Error((result && result.errMsg) || "create reimbursement failed");
-          }
-          wx.hideLoading();
-          if (pendingTarget) {
-            this.clearPendingReimbursementTarget();
-          }
-          wx.navigateTo({
-            url: `/pages/reimburse-detail/index?id=${result.data._id}`,
-          });
-        })
-        .catch(() => {
-          wx.hideLoading();
-          wx.showToast({
-            title: pendingTarget ? "追加发票失败" : "生成报销单失败",
-            icon: "none",
-          });
-        });
-      return;
-    }
     if (label === "导出 PDF") {
       this.exportSelectedPdf();
       return;
@@ -448,7 +381,7 @@ Page({
         wx.hideLoading();
         const result = res.result;
         if (!result || !result.success || !result.data) {
-          throw new Error((result && result.errMsg) || "生成PDF失败");
+          throw new Error(this.formatExportError(result));
         }
         const { tempFileURL, fileName } = result.data;
         console.log("[Export PDF] tempFileURL:", tempFileURL);
@@ -490,11 +423,29 @@ Page({
       .catch((err) => {
         wx.hideLoading();
         console.error("[Export PDF] Error:", err);
-        wx.showToast({
-          title: (err.message || "导出失败").substring(0, 20),
-          icon: "none",
-          duration: 3000,
+        wx.showModal({
+          title: "导出失败",
+          content: err.message || "导出失败",
+          showCancel: false,
         });
       });
+  },
+  formatExportError(result) {
+    if (
+      result &&
+      result.errCode === "EXPORT_UNSUPPORTED_ATTACHMENT" &&
+      result.data &&
+      result.data.unsupportedInvoices
+    ) {
+      const names = result.data.unsupportedInvoices
+        .map((item) => item.title)
+        .filter(Boolean)
+        .slice(0, 5)
+        .join("、");
+      return names
+        ? `以下发票缺少原始图片或PDF：${names}`
+        : result.errMsg || "所选发票缺少可导出的原始图片或PDF";
+    }
+    return (result && result.errMsg) || "生成PDF失败";
   },
 });

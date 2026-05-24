@@ -15,13 +15,15 @@ Page({
       date: "2026-03-24",
       buyer: "杭州云行信息技术有限公司",
       seller: "上海云联数字科技有限公司",
-      source: "微信卡包",
-      statusTags: ["待核验", "可导出", "未报销"],
+      source: "智能识别",
+      statusTags: ["待核验", "可导出"],
+      hasOriginalAttachment: true,
+      attachmentTypes: ["image"],
     },
     timeline: [
-      { title: "导入票夹", meta: "今天 10:26 · 微信卡包" },
+      { title: "导入票夹", meta: "今天 10:26 · 智能识别" },
       { title: "完成 OCR 校验", meta: "今天 10:28 · 字段已识别" },
-      { title: "等待加入报销单", meta: "当前状态" },
+      { title: "等待导出归档", meta: "当前状态" },
     ],
   },
   onLoad(options) {
@@ -35,6 +37,18 @@ Page({
   },
   formatAmount(amountInCents) {
     return `¥${(Number(amountInCents || 0) / 100).toFixed(2)}`;
+  },
+  filterVisibleTags(tags) {
+    const hiddenTags = ["未报销", "报销中", "已报销", "未打印", "已打印"];
+    return (tags || []).filter((tag) => !hiddenTags.includes(tag));
+  },
+  normalizeTimeline(timeline) {
+    return (timeline || this.data.timeline).map((item) => ({
+      title: String(item.title || "")
+        .replace("等待加入报销单", "等待导出归档")
+        .replace("已完成报销", "已导出归档"),
+      meta: String(item.meta || "").replace("报销", "归档"),
+    }));
   },
   applyInvoiceDetail(invoice, timeline) {
     this.setData({
@@ -50,9 +64,11 @@ Page({
         buyer: invoice.buyerName || invoice.buyer,
         seller: invoice.sellerName || invoice.seller,
         source: invoice.sourceLabel || invoice.source,
-        statusTags: invoice.tags || invoice.statusTags || [],
+        statusTags: this.filterVisibleTags(invoice.tags || invoice.statusTags),
+        hasOriginalAttachment: Boolean(invoice.hasOriginalAttachment),
+        attachmentTypes: invoice.attachmentTypes || [],
       },
-      timeline: timeline || invoice.timeline || this.data.timeline,
+      timeline: this.normalizeTimeline(timeline || invoice.timeline),
     });
   },
   findLocalDraft(invoiceId) {
@@ -167,8 +183,109 @@ Page({
       },
     });
   },
+  formatExportError(result) {
+    if (
+      result &&
+      result.errCode === "EXPORT_UNSUPPORTED_ATTACHMENT" &&
+      result.data &&
+      result.data.unsupportedInvoices
+    ) {
+      const names = result.data.unsupportedInvoices
+        .map((item) => item.title)
+        .filter(Boolean)
+        .slice(0, 5)
+        .join("、");
+      return names
+        ? `以下发票缺少原始图片或PDF：${names}`
+        : result.errMsg || "当前发票缺少可导出的原始图片或PDF";
+    }
+    return (result && result.errMsg) || "生成PDF失败";
+  },
+  openGeneratedPdf(exportData) {
+    const { tempFileURL, fileName } = exportData;
+    wx.downloadFile({
+      url: tempFileURL,
+      filePath: `${wx.env.USER_DATA_PATH}/${fileName}`,
+      success: (downloadRes) => {
+        if (downloadRes.statusCode !== 200) {
+          wx.showToast({ title: "下载PDF失败", icon: "none" });
+          return;
+        }
+        wx.showActionSheet({
+          itemList: ["打开PDF", "转发到聊天"],
+          success: (actionRes) => {
+            if (actionRes.tapIndex === 0) {
+              wx.openDocument({
+                filePath: downloadRes.filePath,
+                showMenu: true,
+                fileType: "pdf",
+                fail: () => {
+                  wx.showToast({ title: "打开PDF失败", icon: "none" });
+                },
+              });
+              return;
+            }
+            wx.shareFileMessage({
+              filePath: downloadRes.filePath,
+              fileName,
+              fail: () => {
+                wx.showToast({ title: "转发失败", icon: "none" });
+              },
+            });
+          },
+        });
+      },
+      fail: () => {
+        wx.showToast({ title: "下载PDF失败", icon: "none" });
+      },
+    });
+  },
+  exportCurrentPdf() {
+    if (this.data.isLocalDraft) {
+      wx.showToast({ title: "本地草稿无法导出，请等待同步", icon: "none" });
+      return;
+    }
+    if (!this.data.invoice.hasOriginalAttachment) {
+      wx.showModal({
+        title: "暂不可导出",
+        content: "当前发票缺少原始图片或PDF，请从票夹选择有原票的发票导出。",
+        showCancel: false,
+      });
+      return;
+    }
+    wx.showLoading({ title: "正在生成PDF...", mask: true });
+    wx.cloud
+      .callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "generateExportPdf",
+          invoiceIds: [this.data.invoiceId],
+        },
+        timeout: 30000,
+      })
+      .then((response) => {
+        wx.hideLoading();
+        const result = response.result;
+        if (!result || !result.success || !result.data) {
+          throw new Error(this.formatExportError(result));
+        }
+        this.openGeneratedPdf(result.data);
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        wx.showModal({
+          title: "导出失败",
+          content: err.message || "导出失败",
+          showCancel: false,
+        });
+      });
+  },
   handleTap(e) {
     const { page, label } = e.currentTarget.dataset;
+    if (label === "导出 PDF") {
+      this.exportCurrentPdf();
+      return;
+    }
     if (page) {
       wx.navigateTo({
         url: page,

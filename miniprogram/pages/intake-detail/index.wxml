@@ -50,15 +50,6 @@
     <block wx:if="{{ocrResult}}">
       <view class="section-card ocr-result-card">
         <view class="section-title">识别结果预览</view>
-        <block wx:if="{{ocrProvider === 'mock'}}">
-          <view class="mock-mode-notice">
-            <view class="mock-icon">⚠️</view>
-            <view class="mock-text">
-              <view class="mock-title">模拟模式（开发测试）</view>
-              <view class="mock-desc">当前显示的是预设测试数据，非真实OCR识别结果</view>
-            </view>
-          </view>
-        </block>
         <view class="confidence-bar">
           <view class="confidence-label">识别置信度</view>
           <view class="confidence-value">{{ocrResult.confidence || 0}}%</view>
@@ -268,15 +259,6 @@
     <block wx:if="{{ocrResult}}">
       <view class="section-card ocr-result-card">
         <view class="section-title">识别结果预览</view>
-        <block wx:if="{{ocrProvider === 'mock'}}">
-          <view class="mock-mode-notice">
-            <view class="mock-icon">⚠️</view>
-            <view class="mock-text">
-              <view class="mock-title">模拟模式（开发测试）</view>
-              <view class="mock-desc">当前显示的是预设测试数据，非真实OCR识别结果</view>
-            </view>
-          </view>
-        </block>
         <view class="result-grid">
           <view class="result-item {{ocrResult.title ? 'filled' : ''}}" wx:if="{{ocrResult.title}}">
             <view class="result-label">发票标题</view>
@@ -487,15 +469,6 @@
     <block wx:if="{{ocrResult}}">
       <view class="section-card ocr-result-card">
         <view class="section-title">识别结果预览</view>
-        <block wx:if="{{ocrProvider === 'mock'}}">
-          <view class="mock-mode-notice">
-            <view class="mock-icon">⚠️</view>
-            <view class="mock-text">
-              <view class="mock-title">模拟模式（开发测试）</view>
-              <view class="mock-desc">当前显示的是预设测试数据，非真实OCR识别结果</view>
-            </view>
-          </view>
-        </block>
         <view class="result-grid">
           <view class="result-item {{ocrResult.title ? 'filled' : ''}}" wx:if="{{ocrResult.title}}">
             <view class="result-label">发票标题</view>
@@ -610,15 +583,6 @@
     <block wx:if="{{ocrResult}}">
       <view class="section-card ocr-result-card">
         <view class="section-title">识别结果预览</view>
-        <block wx:if="{{ocrProvider === 'mock'}}">
-          <view class="mock-mode-notice">
-            <view class="mock-icon">⚠️</view>
-            <view class="mock-text">
-              <view class="mock-title">模拟模式（开发测试）</view>
-              <view class="mock-desc">当前显示的是预设测试数据，非真实OCR识别结果</view>
-            </view>
-          </view>
-        </block>
         <view class="confidence-bar">
           <view class="confidence-label">识别置信度</view>
           <view class="confidence-value">{{ocrResult.confidence || 0}}%</view>

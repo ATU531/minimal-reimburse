@@ -1,5 +1,3 @@
-const LOCAL_EXPORT_JOBS_STORAGE_KEY = "localExportJobs";
-
 Page({
   data: {
     loading: false,
@@ -8,52 +6,31 @@ Page({
     scopeType: "filtered_result",
     scopeId: "",
     currentView: {
-      title: "导出中心",
-      subtitle: "统一管理 PDF、Excel、打印和导出偏好",
+      title: "PDF 导出",
+      subtitle: "将原始发票图片或 PDF 合并为一个归档文件",
     },
     viewMap: {
       pdf: {
         title: "PDF 导出",
-        subtitle: "适合存档、打印预览与对外发送",
-      },
-      excel: {
-        title: "Excel 导出",
-        subtitle: "适合财务台账、汇总统计与后续加工",
-      },
-      preference: {
-        title: "导出偏好",
-        subtitle: "配置默认格式、字段顺序与命名规则",
-      },
-      print: {
-        title: "打印与归档",
-        subtitle: "选择打印版式并确认归档打包内容",
+        subtitle: "将原始发票图片或 PDF 合并为一个归档文件",
       },
     },
-    formatOptions: [
-      { label: "PDF", value: "pdf" },
-      { label: "Excel", value: "excel" },
-    ],
+    formatOptions: [{ label: "PDF", value: "pdf" }],
     exportTasks: [],
-    fallbackTasks: [
-      { title: "发票明细 Excel", status: "可导出", desc: "按票夹筛选结果生成明细表" },
-      { title: "报销单 PDF", status: "待确认", desc: "附带封面、发票清单和签字区" },
-      { title: "打印打包", status: "预览中", desc: "合并单据、发票与附件页" },
-    ],
     presets: [
       "按月份命名文件",
-      "导出时附带金额汇总",
-      "PDF 中展示核验状态",
-      "Excel 中保留来源字段",
+      "图片发票每页排放两张",
+      "原始 PDF 发票保留原页内容",
     ],
   },
   onLoad(options) {
-    const type = options.type || options.mode || "pdf";
+    const type = options.type || "pdf";
     const scopeType = options.scope || "filtered_result";
     const scopeId = options.scopeId || "";
     const currentView = this.data.viewMap[type] || this.data.viewMap.pdf;
     this.setData({
       currentView,
-      selectedFormat: type === "excel" ? "excel" : "pdf",
+      selectedFormat: "pdf",
       scopeType,
       scopeId,
     });
@@ -62,55 +39,13 @@ Page({
   onShow() {
     this.fetchExportJobs();
   },
-  getLocalJobs() {
-    return wx.getStorageSync(LOCAL_EXPORT_JOBS_STORAGE_KEY) || [];
-  },
-  setLocalJobs(jobs) {
-    wx.setStorageSync(LOCAL_EXPORT_JOBS_STORAGE_KEY, jobs);
-  },
-  progressLocalJobs(jobs) {
-    const now = Date.now();
-    return jobs.map((job) => {
-      const elapsed = now - Number(job.createdAt || 0);
-      if (elapsed >= 3200) {
-        return Object.assign({}, job, {
-          status: "已完成",
-          desc: `${job.fileName}（本地模拟）`,
-        });
-      }
-      if (elapsed >= 1200) {
-        return Object.assign({}, job, {
-          status: "处理中",
-        });
-      }
-      return job;
-    });
-  },
   buildTaskList(items) {
     return items.map((item) => ({
-      title: item.title,
-      status: item.status,
-      desc: item.desc,
+      title: `${item.formatLabel || "PDF"} · ${item.jobTitle || item.fileName || "原票导出"}`,
+      status: item.statusLabel || item.status || "已生成",
+      desc: item.fileName || (item.scopeId ? `范围：${item.scopeId}` : "范围：当前发票"),
       createdAt: item.createdAt,
     }));
-  },
-  appendLocalJob() {
-    const now = Date.now();
-    const formatLabel = this.data.selectedFormat === "excel" ? "Excel" : "PDF";
-    const localJob = {
-      id: `local-export-${now}`,
-      title: `${formatLabel} · 本地导出任务`,
-      status: "排队中",
-      desc: "云函数未返回任务结果，已使用本地模拟任务",
-      fileName: `export-${now}.${this.data.selectedFormat === "excel" ? "xlsx" : "pdf"}`,
-      createdAt: now,
-      scopeType: this.data.scopeType,
-      scopeId: this.data.scopeId,
-      format: this.data.selectedFormat,
-    };
-    const nextJobs = [localJob, ...this.getLocalJobs()];
-    this.setLocalJobs(nextJobs);
-    return localJob;
   },
   fetchExportJobs() {
     this.setData({
@@ -130,46 +65,21 @@ Page({
         if (!result || result.success !== true || !Array.isArray(result.data)) {
           throw new Error("cloud function returned empty result");
         }
-        const cloudTasks = result.data.map((item) => ({
-          title: `${item.formatLabel} · ${item.jobTitle}`,
-          status: item.statusLabel,
-          desc: item.fileName || (item.scopeId ? `范围：${item.scopeId}` : "范围：当前筛选结果"),
-          createdAt: item.createdAt,
-        }));
-        const localJobs = this.progressLocalJobs(this.getLocalJobs()).filter((item) => {
-          if (this.data.scopeType && item.scopeType !== this.data.scopeType) {
-            return false;
-          }
-          if (this.data.scopeId && item.scopeId !== this.data.scopeId) {
-            return false;
-          }
-          return true;
-        });
-        this.setLocalJobs(this.progressLocalJobs(this.getLocalJobs()));
+        const pdfTasks = result.data.filter(
+          (item) => (item.format || "pdf") === "pdf"
+        );
         this.setData({
           loading: false,
-          exportTasks: [...this.buildTaskList(localJobs), ...cloudTasks],
+          exportTasks: this.buildTaskList(pdfTasks),
         });
       })
       .catch(() => {
-        const localJobs = this.progressLocalJobs(this.getLocalJobs()).filter((item) => {
-          if (this.data.scopeType && item.scopeType !== this.data.scopeType) {
-            return false;
-          }
-          if (this.data.scopeId && item.scopeId !== this.data.scopeId) {
-            return false;
-          }
-          return true;
-        });
-        this.setLocalJobs(this.progressLocalJobs(this.getLocalJobs()));
         this.setData({
           loading: false,
-          exportTasks: localJobs.length
-            ? this.buildTaskList(localJobs)
-            : this.data.fallbackTasks,
+          exportTasks: [],
         });
         wx.showToast({
-          title: "云函数未返回结果，已展示本地任务",
+          title: "导出记录加载失败",
           icon: "none",
         });
       });
@@ -180,55 +90,121 @@ Page({
       selectedFormat,
     });
   },
-  createExportJob() {
+  formatExportError(result) {
+    if (
+      result &&
+      result.errCode === "EXPORT_UNSUPPORTED_ATTACHMENT" &&
+      result.data &&
+      result.data.unsupportedInvoices
+    ) {
+      const names = result.data.unsupportedInvoices
+        .map((item) => item.title)
+        .filter(Boolean)
+        .slice(0, 5)
+        .join("、");
+      return names
+        ? `以下发票缺少原始图片或PDF：${names}`
+        : result.errMsg || "所选发票缺少可导出的原始图片或PDF";
+    }
+    return (result && result.errMsg) || "生成PDF失败";
+  },
+  openGeneratedPdf(exportData) {
+    const { tempFileURL, fileName } = exportData;
+    wx.downloadFile({
+      url: tempFileURL,
+      filePath: `${wx.env.USER_DATA_PATH}/${fileName}`,
+      success: (downloadRes) => {
+        if (downloadRes.statusCode !== 200) {
+          wx.showToast({ title: "下载PDF失败", icon: "none" });
+          return;
+        }
+        wx.showActionSheet({
+          itemList: ["打开PDF", "转发到聊天"],
+          success: (actionRes) => {
+            if (actionRes.tapIndex === 0) {
+              wx.openDocument({
+                filePath: downloadRes.filePath,
+                showMenu: true,
+                fileType: "pdf",
+                fail: () => {
+                  wx.showToast({ title: "打开PDF失败", icon: "none" });
+                },
+              });
+              return;
+            }
+            wx.shareFileMessage({
+              filePath: downloadRes.filePath,
+              fileName,
+              fail: () => {
+                wx.showToast({ title: "转发失败", icon: "none" });
+              },
+            });
+          },
+        });
+      },
+      fail: () => {
+        wx.showToast({ title: "下载PDF失败", icon: "none" });
+      },
+    });
+  },
+  createExportFile() {
     if (this.data.creating) {
+      return;
+    }
+    if (this.data.scopeType !== "invoice" || !this.data.scopeId) {
+      wx.showModal({
+        title: "请选择发票",
+        content: "请先在票夹中勾选发票后导出 PDF。",
+        showCancel: false,
+        success: () => {
+          wx.switchTab({
+            url: "/pages/folder/index",
+          });
+        },
+      });
       return;
     }
     this.setData({
       creating: true,
     });
+    wx.showLoading({ title: "正在生成PDF...", mask: true });
     wx.cloud
       .callFunction({
         name: "quickstartFunctions",
         data: {
-          type: "createExportJob",
-          data: {
-            format: this.data.selectedFormat,
-            scopeType: this.data.scopeType,
-            scopeId: this.data.scopeId,
-          },
+          type: "generateExportPdf",
+          invoiceIds: [this.data.scopeId],
         },
+        timeout: 30000,
       })
       .then((response) => {
+        wx.hideLoading();
         const result = response.result;
-        if (!result || result.success !== true || !(result.data && result.data._id)) {
-          throw new Error("create export job result is empty");
+        if (!result || !result.success || !result.data) {
+          throw new Error(this.formatExportError(result));
         }
         this.setData({
           creating: false,
         });
-        wx.showToast({
-          title: "已创建导出任务",
-          icon: "success",
-        });
+        this.openGeneratedPdf(result.data);
         this.fetchExportJobs();
       })
-      .catch(() => {
-        this.appendLocalJob();
+      .catch((err) => {
+        wx.hideLoading();
         this.setData({
           creating: false,
         });
-        wx.showToast({
-          title: "云端不可用，已创建本地任务",
-          icon: "none",
+        wx.showModal({
+          title: "导出失败",
+          content: err.message || "导出失败",
+          showCancel: false,
         });
-        this.fetchExportJobs();
       });
   },
   handleTap(e) {
     const label = e.currentTarget.dataset.label;
-    if (label === "生成导出文件") {
-      this.createExportJob();
+    if (label === "生成 PDF") {
+      this.createExportFile();
       return;
     }
     this.fetchExportJobs();

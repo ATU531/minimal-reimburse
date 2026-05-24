@@ -2,21 +2,18 @@ Page({
   data: {
     menuGroups: [
       {
-        id: "company",
-        title: "企业与抬头",
+        id: "invoice",
+        title: "发票资料",
         items: [
-          { label: "我的企业", page: "/pages/settings/index?section=company" },
           { label: "发票抬头", page: "/pages/settings/index?section=title" },
-          { label: "收票邮箱", page: "/pages/settings/index?section=email" },
+          { label: "收票说明", page: "/pages/settings/index?section=email" },
         ],
       },
       {
-        id: "workflow",
-        title: "报销与导出",
+        id: "export",
+        title: "导出设置",
         items: [
-          { label: "报销单设置", page: "/pages/settings/index?section=reimburse" },
-          { label: "导出偏好", page: "/pages/export-center/index?type=preference" },
-          { label: "打印设置", page: "/pages/settings/index?section=print" },
+          { label: "PDF 导出", page: "/pages/export-center/index?type=pdf" },
         ],
       },
       {

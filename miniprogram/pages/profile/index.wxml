@@ -2,23 +2,15 @@
   <view class="profile-card">
     <view class="avatar">票</view>
     <view class="profile-main">
-      <view class="profile-name">轻票夹</view>
-      <view class="profile-subtitle">企业票据整理与报销协作</view>
+      <view class="profile-name">票易理</view>
+      <view class="profile-subtitle">发票收集与原票 PDF 归档</view>
     </view>
-  </view>
-
-  <view class="invite-card" data-label="邀请同事" bindtap="handleTap">
-    <view>
-      <view class="invite-title">邀请团队成员协作</view>
-      <view class="invite-desc">后续可扩展协同整理、审批流与共享票夹能力。</view>
-    </view>
-    <view class="invite-link">立即邀请</view>
   </view>
 
   <view class="stats-row">
     <view class="stat-card">
       <view class="stat-value">2</view>
-      <view class="stat-label">企业主体</view>
+      <view class="stat-label">常用抬头</view>
     </view>
     <view class="stat-card">
       <view class="stat-value">5</view>

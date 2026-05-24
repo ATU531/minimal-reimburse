@@ -14,6 +14,7 @@ Page({
     ocrLoading: false,
     uploadedFileID: "",
     submitting: false,
+    supportedSources: ["chat", "ocr", "album"],
     invoiceTypeOptions: [
       { label: "电子普票", value: "vat_common_electronic" },
       { label: "电子专票", value: "vat_special_electronic" },
@@ -41,15 +42,8 @@ Page({
       chat: {
         title: "聊天记录导入",
         subtitle: "从聊天图片、PDF或转发内容中整理发票",
-        guide: "适合报销人先把零散票据（截图/文件）转发到工作群，再批量筛出待识别内容。",
+        guide: "适合先把零散票据（截图/文件）转发到聊天，再批量筛出待识别内容。",
         actionLabel: "选择聊天文件",
-      },
-      card: {
-        title: "微信卡包同步",
-        subtitle: "导入卡包中的电子发票并补齐票据字段",
-        guide: "适合同步已开具完成的电子票，减少二次上传动作。（需企业主体认证）",
-        actionLabel: "同步卡包",
-        action: "syncCard",
       },
       local: {
         title: "本地文件导入",
@@ -57,12 +51,6 @@ Page({
         guide: "适合财务按月整理归档文件，再做统一识别与校验。",
         actionLabel: "选择本地文件",
         action: "chooseLocalFile",
-      },
-      scan: {
-        title: "扫码录入",
-        subtitle: "扫描二维码或条码后创建发票草稿",
-        guide: "适合纸票、线下票据或临时场景的快速录入。",
-        actionLabel: "开始扫码",
       },
       album: {
         title: "手机相册导入",
@@ -74,7 +62,7 @@ Page({
       ocr: {
         title: "智能识别",
         subtitle: "拍照或从相册导入后自动提取金额、抬头、税号",
-        guide: "适合希望先拿到结构化结果，再补充校验和报销归类的场景。",
+        guide: "适合希望先拿到结构化结果，再补充校验和分类的场景。",
         actionLabel: "拍照识别",
       },
       manual: {
@@ -84,26 +72,34 @@ Page({
         actionLabel: "填写发票",
         actionPage: "/pages/manual-entry/index",
       },
-      more: {
-        title: "更多录入方式",
-        subtitle: "预留邮件转发、批量采集、企业代收等扩展入口",
-        guide: "适合后续功能扩展，当前先确定信息架构和操作布局。",
-        actionLabel: "敬请期待",
-      },
     },
     sections: [
       { title: "导入来源", detail: "支持单次选择或最近来源快捷重试" },
       { title: "识别预览", detail: "展示金额、抬头、税号、开票日期等核心字段" },
-      { title: "补充信息", detail: "可填写科目、项目、报销人、备注等业务字段" },
+      { title: "补充信息", detail: "可填写分类、项目、备注等业务字段" },
     ],
     recentRecords: [
       { title: "午餐接待发票", meta: "聊天记录 · 2 分钟前" },
-      { title: "软件订阅发票", meta: "微信卡包 · 今天 10:26" },
+      { title: "软件订阅发票", meta: "智能识别 · 今天 10:26" },
       { title: "酒店住宿发票", meta: "手机相册 · 昨天" },
     ],
   },
   onLoad(options) {
     const source = options.source || "ocr";
+    if (!this.data.supportedSources.includes(source)) {
+      wx.showModal({
+        title: "暂未开放",
+        content: "该录入方式暂不在第一版开放，请使用聊天文件、相册照片或拍照识别。",
+        showCancel: false,
+        confirmText: "我知道了",
+        complete: () => {
+          wx.switchTab({
+            url: "/pages/index/index",
+          });
+        },
+      });
+      return;
+    }
     const currentSource = this.data.sources[source] || this.data.sources.ocr;
     const isChatMode = source === "chat";
     const isOcrMode = source === "ocr";
@@ -125,10 +121,6 @@ Page({
   },
   handleTap(e) {
     const { page, label, action } = e.currentTarget.dataset;
-    if (action === "syncCard") {
-      this.chooseInvoiceFromCard();
-      return;
-    }
     if (action === "chooseLocalFile") {
       this.chooseLocalFile();
       return;
@@ -270,16 +262,7 @@ Page({
           ocrProvider: ocrProvider,
         });
         this.fillFormWithOcrResult(ocrData);
-        if (ocrProvider === "mock") {
-          wx.showModal({
-            title: "提示",
-            content: "当前使用模拟数据模式。如需真实OCR识别，请配置腾讯云OCR服务。",
-            showCancel: false,
-            confirmText: "我知道了",
-          });
-        } else {
-          wx.showToast({ title: "识别成功", icon: "success" });
-        }
+        wx.showToast({ title: "识别成功", icon: "success" });
       })
       .catch((error) => {
         wx.hideLoading();
@@ -295,190 +278,6 @@ Page({
         wx.showToast({ title: displayMsg, icon: "none", duration: 3000 });
       });
   },
-  chooseInvoiceFromCard() {
-    wx.showModal({
-      title: "功能暂未开放",
-      content: "微信卡包发票同步功能需要企业主体认证，个人小程序暂不支持。后续开通权限后可使用。",
-      showCancel: false,
-      confirmText: "我知道了",
-    });
-  },
-  /*
-  chooseInvoiceFromCard() {
-    wx.showLoading({
-      title: "正在打开卡包...",
-      mask: true,
-    });
-    wx
-      .chooseInvoice({
-        success: (res) => {
-          wx.hideLoading();
-          console.log("[Card Invoice] Selected:", res.invoiceInfo);
-          let invoiceInfo;
-          try {
-            invoiceInfo = typeof res.invoiceInfo === "string"
-              ? JSON.parse(res.invoiceInfo)
-              : res.invoiceInfo;
-          } catch (e) {
-            console.error("[Card Invoice] Parse error:", e);
-            wx.showToast({
-              title: "发票信息解析失败",
-              icon: "none",
-            });
-            return;
-          }
-          if (Array.isArray(invoiceInfo)) {
-            invoiceInfo = invoiceInfo[0] || null;
-          }
-          if (!invoiceInfo || typeof invoiceInfo !== "object") {
-            wx.showToast({
-              title: "发票信息格式异常",
-              icon: "none",
-            });
-            return;
-          }
-          console.log(
-            "[Card Invoice] parsed type:",
-            typeof invoiceInfo,
-            "keys:",
-            Object.keys(invoiceInfo)
-          );
-          const cardId = invoiceInfo.card_id || "";
-          const encryptCode = invoiceInfo.encrypt_code || "";
-          const appId = invoiceInfo.app_id || "";
-          console.log(
-            "[Card Invoice] cardId:",
-            cardId,
-            "encryptCode:",
-            encryptCode
-          );
-          if (!cardId || !encryptCode) {
-            console.error(
-              "[Card Invoice] Missing fields:",
-              JSON.stringify(invoiceInfo)
-            );
-            wx.showToast({
-              title: "发票信息不完整",
-              icon: "none",
-            });
-            return;
-          }
-          this.queryInvoiceDetail({ cardId, encryptCode, appId });
-        },
-        fail: (err) => {
-          wx.hideLoading();
-          console.error("[Card Invoice] Failed:", err);
-          if (
-            err.errMsg &&
-            (err.errMsg.includes("cancel") || err.errMsg.includes("auth deny"))
-          ) {
-            return;
-          }
-          if (err.errMsg && err.errMsg.includes("scope unauthorized")) {
-            wx.showModal({
-              title: "需要授权",
-              content: "请允许访问您的微信卡包发票，以便同步电子发票",
-              confirmText: "去设置",
-              success: (res) => {
-                if (res.confirm) {
-                  wx.openSetting({});
-                }
-              },
-            });
-            return;
-          }
-          wx.showToast({
-            title: err.errMsg || "打开卡包失败",
-            icon: "none",
-            duration: 3000,
-          });
-        },
-      });
-  },
-  queryInvoiceDetail(invoiceInfo) {
-    wx.showLoading({
-      title: "正在获取发票详情...",
-      mask: true,
-    });
-    wx.cloud
-      .callFunction({
-        name: "quickstartFunctions",
-        data: {
-          type: "getInvoiceInfo",
-          cardId: invoiceInfo.cardId,
-          encryptCode: invoiceInfo.encryptCode,
-          appId: invoiceInfo.appId,
-        },
-      })
-      .then((res) => {
-        wx.hideLoading();
-        console.log(
-          "[Card Invoice] Detail response:",
-          JSON.stringify(res.result)
-        );
-        const result = res.result;
-        if (!result || result.success === false) {
-          const errorMsg =
-            (result && result.errMsg) || "获取发票详情失败";
-          wx.showToast({
-            title: errorMsg.length > 20
-              ? errorMsg.substring(0, 20) + "..."
-              : errorMsg,
-            icon: "none",
-            duration: 3000,
-          });
-          return;
-        }
-        const invoiceData = result.data || {};
-        console.log("[Card Invoice] Parsed data:", JSON.stringify(invoiceData));
-        this.setData({
-          selectedFile: {
-            name: invoiceData.title || "卡包电子发票",
-            size: 0,
-            path: "",
-            type: "card",
-            fileType: "card",
-            time: new Date().toLocaleString("zh-CN"),
-            cardId: invoiceInfo.card_id,
-          },
-        });
-        if (!this.data.form.title && invoiceData.title) {
-          this.setData({ "form.title": invoiceData.title });
-        }
-        const displayOcrData = this.addDisplayFields(invoiceData);
-        this.setData({
-          ocrResult: displayOcrData,
-          ocrProvider: "wechat_card",
-        });
-        this.fillFormWithOcrResult(invoiceData);
-        wx.showToast({
-          title: "同步成功",
-          icon: "success",
-        });
-      })
-      .catch((error) => {
-        wx.hideLoading();
-        console.error("[Card Invoice] Query failed:", error);
-        let displayMsg = "获取发票详情失败";
-        if (error && error.errMsg) {
-          if (error.errMsg.includes("timeout")) {
-            displayMsg = "请求超时，请重试";
-          } else if (error.errMsg.includes("-1")) {
-            displayMsg = "网络异常，请检查网络";
-          } else {
-            displayMsg = error.errMsg.length > 15
-              ? error.errMsg.substring(0, 15) + "..."
-              : error.errMsg;
-          }
-        }
-        wx.showToast({
-          title: displayMsg,
-          icon: "none",
-          duration: 3000,
-        });
-      });
-  },
-  */
   chooseMessageFile() {
     wx.chooseMessageFile({
       count: 1,
@@ -606,22 +405,10 @@ Page({
           ocrProvider: ocrProvider,
         });
         this.fillFormWithOcrResult(ocrData);
-        let toastTitle = "识别成功";
-        if (ocrProvider === "mock") {
-          toastTitle = "模拟模式（开发测试）";
-          wx.showModal({
-            title: "提示",
-            content:
-              "当前使用模拟数据模式，显示的是预设的测试数据。如需真实OCR识别，请配置腾讯云或百度云OCR服务。",
-            showCancel: false,
-            confirmText: "我知道了",
-          });
-        } else {
-          wx.showToast({
-            title: toastTitle,
-            icon: "success",
-          });
-        }
+        wx.showToast({
+          title: "识别成功",
+          icon: "success",
+        });
       })
       .catch((error) => {
         wx.hideLoading();
@@ -758,22 +545,10 @@ Page({
           ocrProvider: ocrProvider,
         });
         this.fillFormWithOcrResult(ocrData);
-        let toastTitle = "识别成功";
-        if (ocrProvider === "mock") {
-          toastTitle = "模拟模式（开发测试）";
-          wx.showModal({
-            title: "提示",
-            content:
-              "当前使用模拟数据模式，显示的是预设的测试数据。如需真实OCR识别，请配置腾讯云或百度云OCR服务。",
-            showCancel: false,
-            confirmText: "我知道了",
-          });
-        } else {
-          wx.showToast({
-            title: toastTitle,
-            icon: "success",
-          });
-        }
+        wx.showToast({
+          title: "识别成功",
+          icon: "success",
+        });
       })
       .catch((error) => {
         wx.hideLoading();
@@ -979,8 +754,8 @@ Page({
       exportStatus: "none",
       tags:
         sourceType === "ocr"
-          ? ["已核验", "可导出", "未报销", "未打印"]
-          : ["待核验", "可导出", "未报销", "未打印"],
+          ? ["已核验", "可导出"]
+          : ["待核验", "可导出"],
       timeline: [
         {
           title:
@@ -1081,6 +856,18 @@ Page({
       });
       return;
     }
+    const requiresOcrResult =
+      this.data.isChatMode ||
+      this.data.isLocalMode ||
+      this.data.isOcrMode ||
+      this.data.isAlbumMode;
+    if (requiresOcrResult && !this.data.ocrResult) {
+      wx.showToast({
+        title: "请先完成真实OCR识别",
+        icon: "none",
+      });
+      return;
+    }
     const errors = this.validateForm();
     const validationMessage =
       errors.title || errors.amount || errors.issueDate || "";
@@ -1120,8 +907,7 @@ Page({
     if (this.data.isChatMode) {
       const selectedFile = this.data.selectedFile;
       const ocrResult = this.data.ocrResult || {};
-      const hasOcrResult =
-        Object.keys(ocrResult).length > 0 && ocrResult.title;
+      const hasOcrResult = Boolean(this.data.ocrResult);
       requestPayload = {
         title: form.title.trim(),
         amount: Math.round(Number(form.amount) * 100),
@@ -1187,8 +973,7 @@ Page({
     } else if (this.data.isLocalMode) {
       const selectedFile = this.data.selectedFile;
       const ocrResult = this.data.ocrResult || {};
-      const hasOcrResult =
-        Object.keys(ocrResult).length > 0 && ocrResult.title;
+      const hasOcrResult = Boolean(this.data.ocrResult);
       requestPayload = {
         title: form.title.trim(),
         amount: Math.round(Number(form.amount) * 100),
@@ -1223,8 +1008,7 @@ Page({
       };
     } else if (this.data.isAlbumMode) {
       const ocrResult = this.data.ocrResult || {};
-      const hasOcrResult =
-        Object.keys(ocrResult).length > 0 && ocrResult.title;
+      const hasOcrResult = Boolean(this.data.ocrResult);
       requestPayload = {
         title: form.title.trim(),
         amount: Math.round(Number(form.amount) * 100),
