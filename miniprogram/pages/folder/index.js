@@ -5,7 +5,8 @@ Page({
     activeFilter: "all",
     showFilterPanel: false,
     searchKeyword: "",
-    selectedCount: 2,
+    selectedCount: 0,
+    selectedInvoiceIds: [],
     loading: false,
     syncingLocalDrafts: false,
     allInvoices: [],
@@ -17,7 +18,7 @@ Page({
     summaryCards: [
       { label: "待整理", value: "18" },
       { label: "本月金额", value: "¥9,860" },
-      { label: "待导出", value: "12" },
+      { label: "已选待导", value: "0" },
     ],
     invoices: [
       {
@@ -28,8 +29,19 @@ Page({
         amount: "¥268.00",
         date: "2026-03-27",
         source: "聊天文件",
+        typeIcon: "/images/icons/ui-pdf.svg",
         owner: "上海知行科技有限公司",
         tags: ["已识别", "有原票"],
+        totalAmount: 26800,
+        amountInCents: 26800,
+        verifyStatus: "verified",
+        reimburseStatus: "unreimbursed",
+        printStatus: "unprinted",
+        exportStatus: "none",
+        hasOriginalAttachment: true,
+        attachmentTypes: ["pdf"],
+        createdAt: 1711516800000,
+        updatedAt: 1711516800000,
       },
       {
         id: "inv-002",
@@ -39,8 +51,19 @@ Page({
         amount: "¥3,980.00",
         date: "2026-03-24",
         source: "智能识别",
+        typeIcon: "/images/icons/ui-pdf.svg",
         owner: "杭州云行信息技术有限公司",
         tags: ["待核验", "可导出"],
+        totalAmount: 398000,
+        amountInCents: 398000,
+        verifyStatus: "unverified",
+        reimburseStatus: "unreimbursed",
+        printStatus: "unprinted",
+        exportStatus: "none",
+        hasOriginalAttachment: true,
+        attachmentTypes: ["pdf"],
+        createdAt: 1711257600000,
+        updatedAt: 1711257600000,
       },
       {
         id: "inv-003",
@@ -50,12 +73,44 @@ Page({
         amount: "¥186.50",
         date: "2026-03-21",
         source: "智能识别",
+        typeIcon: "/images/icons/ui-archive.svg",
         owner: "王芳",
         tags: ["已导出", "已归档"],
+        totalAmount: 18650,
+        amountInCents: 18650,
+        verifyStatus: "verified",
+        reimburseStatus: "unreimbursed",
+        printStatus: "unprinted",
+        exportStatus: "exported",
+        hasOriginalAttachment: false,
+        attachmentTypes: [],
+        createdAt: 1711008000000,
+        updatedAt: 1711008000000,
       },
     ],
   },
+  consumeDefaultFilter() {
+    const defaultFilter = wx.getStorageSync("folderDefaultFilter");
+    if (defaultFilter) {
+      wx.removeStorageSync("folderDefaultFilter");
+      this.setData({
+        activeFilter: defaultFilter,
+      });
+      return defaultFilter;
+    }
+    return "";
+  },
+  onLoad() {
+    this.consumeDefaultFilter();
+  },
+  getCurrentMonthPrefix() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    return `${year}-${month}`;
+  },
   onShow() {
+    this.consumeDefaultFilter();
     this.syncLocalDrafts().finally(() => {
       this.fetchInvoices();
     });
@@ -63,7 +118,7 @@ Page({
   formatAmount(amountInCents) {
     return `¥${(Number(amountInCents || 0) / 100).toFixed(2)}`;
   },
-  buildSummaryCards(invoices) {
+  buildSummaryCards(invoices, selectedCount = this.data.selectedCount) {
     const pendingCount = invoices.filter(
       (item) => item.verifyStatus !== "verified"
     ).length;
@@ -71,13 +126,10 @@ Page({
       (total, item) => total + Number(item.totalAmount || 0),
       0
     );
-    const exportableCount = invoices.filter(
-      (item) => item.hasOriginalAttachment && item.exportStatus !== "exported"
-    ).length;
     return [
       { label: "待整理", value: String(pendingCount) },
       { label: "本月金额", value: this.formatAmount(amountTotal) },
-      { label: "待导出", value: String(exportableCount) },
+      { label: "已选待导", value: String(selectedCount || 0) },
     ];
   },
   filterVisibleTags(tags) {
@@ -85,17 +137,22 @@ Page({
     return (tags || []).filter((tag) => !hiddenTags.includes(tag));
   },
   normalizeInvoice(invoice) {
+    const totalAmount = Number(invoice.totalAmount || invoice.amount || 0);
     return {
       id: invoice._id,
       selected: false,
       title: invoice.title,
       type: invoice.invoiceTypeLabel,
-      amount: this.formatAmount(invoice.totalAmount || invoice.amount),
-      amountInCents: Number(invoice.totalAmount || invoice.amount || 0),
+      amount: this.formatAmount(totalAmount),
+      totalAmount,
+      amountInCents: totalAmount,
       date: invoice.issueDate,
       invoiceCode: invoice.invoiceCode || "",
       invoiceNumber: invoice.invoiceNumber || "",
       source: invoice.sourceLabel,
+      typeIcon: invoice.hasOriginalAttachment
+        ? "/images/icons/ui-pdf.svg"
+        : "/images/icons/ui-archive.svg",
       owner: invoice.buyerName || invoice.sellerName || "未命名抬头",
       tags: this.filterVisibleTags(invoice.tags),
       verifyStatus: invoice.verifyStatus,
@@ -109,18 +166,20 @@ Page({
     };
   },
   normalizeLocalInvoice(invoice) {
+    const totalAmount = Number(invoice.totalAmount || invoice.amount || 0);
     return {
       id: invoice._id,
       selected: false,
       title: invoice.title,
       type: invoice.invoiceTypeLabel,
-      amount: this.formatAmount(invoice.totalAmount || invoice.amount),
-      totalAmount: Number(invoice.totalAmount || invoice.amount || 0),
-      amountInCents: Number(invoice.totalAmount || invoice.amount || 0),
+      amount: this.formatAmount(totalAmount),
+      totalAmount,
+      amountInCents: totalAmount,
       date: invoice.issueDate,
       invoiceCode: invoice.invoiceCode || "",
       invoiceNumber: invoice.invoiceNumber || "",
       source: invoice.sourceLabel,
+      typeIcon: "/images/icons/ui-archive.svg",
       owner: invoice.buyerName || invoice.sellerName || "未命名抬头",
       tags: this.filterVisibleTags(invoice.tags),
       verifyStatus: invoice.verifyStatus || "unverified",
@@ -136,6 +195,20 @@ Page({
   getLocalDraftInvoices() {
     const localDrafts = wx.getStorageSync(LOCAL_INVOICES_STORAGE_KEY) || [];
     return localDrafts.map((item) => this.normalizeLocalInvoice(item));
+  },
+  getSelectedInvoiceIdMap(selectedInvoiceIds = this.data.selectedInvoiceIds) {
+    const selectedIdMap = {};
+    (selectedInvoiceIds || []).forEach((id) => {
+      selectedIdMap[id] = true;
+    });
+    return selectedIdMap;
+  },
+  applySelectedState(invoices, selectedIdMap) {
+    return invoices.map((item) =>
+      Object.assign({}, item, {
+        selected: Boolean(selectedIdMap[item.id]),
+      })
+    );
   },
   mergeInvoices(remoteInvoices, localInvoices) {
     const mergedMap = {};
@@ -190,10 +263,15 @@ Page({
     const keyword = String(this.data.searchKeyword || "").trim().toLowerCase();
     let invoices = allInvoices;
     if (filterId === "ready") {
-      invoices = allInvoices.filter((item) => item.exportStatus !== "exported");
+      invoices = allInvoices.filter(
+        (item) => item.hasOriginalAttachment && item.exportStatus !== "exported"
+      );
     }
     if (filterId === "month") {
-      invoices = allInvoices.filter((item) => String(item.date || "").startsWith("2026-03"));
+      const currentMonthPrefix = this.getCurrentMonthPrefix();
+      invoices = allInvoices.filter((item) =>
+        String(item.date || "").startsWith(currentMonthPrefix)
+      );
     }
     if (keyword) {
       invoices = invoices.filter((item) => {
@@ -210,10 +288,11 @@ Page({
         return searchableText.includes(keyword);
       });
     }
+    const selectedCount = invoices.filter((item) => item.selected).length;
     this.setData({
       invoices,
-      selectedCount: invoices.filter((item) => item.selected).length,
-      summaryCards: this.buildSummaryCards(allInvoices),
+      selectedCount,
+      summaryCards: this.buildSummaryCards(allInvoices, selectedCount),
     });
   },
   fetchInvoices() {
@@ -225,7 +304,7 @@ Page({
         name: "quickstartFunctions",
         data: {
           type: "listInvoices",
-          activeFilter: this.data.activeFilter,
+          activeFilter: "all",
           searchKeyword: this.data.searchKeyword,
         },
       })
@@ -237,36 +316,43 @@ Page({
           remoteInvoices,
           this.getLocalDraftInvoices()
         );
+        const selectedIdMap = this.getSelectedInvoiceIdMap();
+        const invoicesWithSelection = this.applySelectedState(
+          mergedInvoices,
+          selectedIdMap
+        );
         this.setData({
-          allInvoices: mergedInvoices,
+          allInvoices: invoicesWithSelection,
           loading: false,
         });
-        this.applyFilter(this.data.activeFilter, mergedInvoices);
+        this.applyFilter(this.data.activeFilter, invoicesWithSelection);
       })
       .catch(() => {
         const fallbackInvoices = this.data.invoices.map((item) =>
           Object.assign({}, item, {
-            totalAmount: Math.round(
-              Number(String(item.amount).replace(/[^\d.]/g, "")) * 100
-            ),
-            amountInCents: Math.round(
-              Number(String(item.amount).replace(/[^\d.]/g, "")) * 100
-            ),
-            verifyStatus: item.tags.includes("已核验") ? "verified" : "unverified",
-            reimburseStatus: "unreimbursed",
-            printStatus: "unprinted",
-            exportStatus: item.tags.includes("已导出") ? "exported" : "none",
+            totalAmount: Number(item.totalAmount || item.amountInCents || 0),
+            amountInCents: Number(item.amountInCents || item.totalAmount || 0),
+            verifyStatus: item.verifyStatus || "unverified",
+            reimburseStatus: item.reimburseStatus || "unreimbursed",
+            printStatus: item.printStatus || "unprinted",
+            exportStatus: item.exportStatus || "none",
+            hasOriginalAttachment: Boolean(item.hasOriginalAttachment),
           })
         );
         const mergedInvoices = this.mergeInvoices(
           fallbackInvoices,
           this.getLocalDraftInvoices()
         );
+        const selectedIdMap = this.getSelectedInvoiceIdMap();
+        const invoicesWithSelection = this.applySelectedState(
+          mergedInvoices,
+          selectedIdMap
+        );
         this.setData({
-          allInvoices: mergedInvoices,
+          allInvoices: invoicesWithSelection,
           loading: false,
         });
-        this.applyFilter(this.data.activeFilter, mergedInvoices);
+        this.applyFilter(this.data.activeFilter, invoicesWithSelection);
         wx.showToast({
           title: "已展示本地票夹数据",
           icon: "none",
@@ -320,18 +406,24 @@ Page({
   },
   toggleInvoice(e) {
     const currentId = e.currentTarget.dataset.id;
-    const invoices = this.data.invoices.map((item) => {
-      if (item.id === currentId) {
-        return Object.assign({}, item, {
-          selected: !item.selected,
-        });
-      }
-      return item;
-    });
+    const currentSelectedIds = this.data.selectedInvoiceIds || [];
+    const isSelected = currentSelectedIds.includes(currentId);
+    const selectedInvoiceIds = isSelected
+      ? currentSelectedIds.filter((id) => id !== currentId)
+      : currentSelectedIds.concat(currentId);
+    const selectedIdMap = this.getSelectedInvoiceIdMap(selectedInvoiceIds);
+    const invoices = this.applySelectedState(this.data.invoices, selectedIdMap);
+    const allInvoices = this.applySelectedState(
+      this.data.allInvoices,
+      selectedIdMap
+    );
     const selectedCount = invoices.filter((item) => item.selected).length;
     this.setData({
       invoices,
+      allInvoices,
+      selectedInvoiceIds,
       selectedCount,
+      summaryCards: this.buildSummaryCards(allInvoices, selectedCount),
     });
   },
   openInvoiceDetail(e) {

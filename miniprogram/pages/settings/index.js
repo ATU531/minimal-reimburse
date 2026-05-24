@@ -1,49 +1,37 @@
 Page({
   data: {
     currentSection: {
-      title: "报销单设置",
-      subtitle: "配置模板字段、抬头展示与导出默认项",
+      title: "发票资料设置",
+      subtitle: "维护常用抬头和收票说明，便于录入发票时统一使用",
     },
     sectionMap: {
-      company: {
-        title: "我的企业",
-        subtitle: "管理企业主体、税号与开票信息",
-      },
       title: {
         title: "发票抬头",
-        subtitle: "设置常用抬头、税号与收票规则",
+        subtitle: "维护常用购买方信息，减少重复填写",
       },
       email: {
-        title: "收票邮箱",
-        subtitle: "集中管理邮件收票地址与同步说明",
-      },
-      reimburse: {
-        title: "报销单设置",
-        subtitle: "配置模板字段、抬头展示与导出默认项",
-      },
-      print: {
-        title: "打印设置",
-        subtitle: "定义打印版式、纸张与页脚信息",
+        title: "收票说明与指引",
+        subtitle: "整理微信文件、相册上传和原票 PDF 归档说明",
       },
     },
     settingGroups: [
       {
-        title: "模板字段",
-        items: ["报销人", "部门", "项目", "费用科目", "审批备注"],
+        title: "常用抬头",
+        items: ["默认抬头名称", "纳税人识别号", "购买方地址电话"],
       },
       {
-        title: "导出与打印",
-        items: ["默认导出 Excel", "附带 PDF 版式", "打印页脚展示公司信息"],
+        title: "收票说明",
+        items: ["微信文件导入说明", "原票附件保留说明", "重复发票检查提示"],
       },
       {
-        title: "协作规则",
-        items: ["允许成员代录", "导出前必须核验", "提交前检查重复发票"],
+        title: "归档偏好",
+        items: ["PDF 原票归档", "按月份整理票夹", "导出前提示缺少原票"],
       },
     ],
   },
   onLoad(options) {
-    const section = options.section || "reimburse";
-    const currentSection = this.data.sectionMap[section] || this.data.sectionMap.reimburse;
+    const section = options.section || "title";
+    const currentSection = this.data.sectionMap[section] || this.data.sectionMap.title;
     this.setData({
       currentSection,
     });

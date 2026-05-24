@@ -1,23 +1,24 @@
-<view class="page">
-  <view class="search-card">
+<view class="folder-page">
+  <view class="filter-card">
     <view class="search-row">
-      <input class="search-box" placeholder="搜索发票名称、抬头、金额、代码、号码" value="{{searchKeyword}}" bindinput="handleSearchInput" />
+      <view class="search-shell">
+        <image class="search-icon" src="/images/icons/ui-search.svg" mode="aspectFit"></image>
+        <input class="search-input" placeholder="搜索发票名称、抬头、金额..." value="{{searchKeyword}}" bindinput="handleSearchInput" />
+      </view>
       <view class="filter-trigger" bindtap="toggleFilterPanel">筛选</view>
     </view>
-    <scroll-view scroll-x class="filter-scroll" enable-flex="true">
-      <view class="filter-list">
-        <view
-          class="filter-pill {{activeFilter === item.id ? 'filter-pill-active' : ''}}"
-          wx:for="{{filters}}"
-          wx:key="id"
-          wx:for-item="item"
-          data-id="{{item.id}}"
-          bindtap="selectFilter"
-        >
-          {{item.label}}
-        </view>
+    <view class="filter-tabs">
+      <view
+        class="filter-tab {{activeFilter === item.id ? 'filter-tab-active' : ''}}"
+        wx:for="{{filters}}"
+        wx:key="id"
+        wx:for-item="item"
+        data-id="{{item.id}}"
+        bindtap="selectFilter"
+      >
+        {{item.label}}
       </view>
-    </scroll-view>
+    </view>
   </view>
 
   <view class="filter-panel-mask" wx:if="{{showFilterPanel}}" bindtap="closeFilterPanel"></view>
@@ -26,19 +27,16 @@
       <view class="filter-panel-title">票夹筛选</view>
       <view class="filter-panel-close" bindtap="closeFilterPanel">关闭</view>
     </view>
-    <view class="filter-panel-section">
-      <view class="filter-panel-subtitle">状态筛选</view>
-      <view class="filter-panel-options">
-        <view
-          class="filter-panel-option {{activeFilter === item.id ? 'filter-panel-option-active' : ''}}"
-          wx:for="{{filters}}"
-          wx:key="id"
-          wx:for-item="item"
-          data-id="{{item.id}}"
-          bindtap="applyPanelFilter"
-        >
-          {{item.label}}
-        </view>
+    <view class="filter-panel-options">
+      <view
+        class="filter-panel-option {{activeFilter === item.id ? 'filter-panel-option-active' : ''}}"
+        wx:for="{{filters}}"
+        wx:key="id"
+        wx:for-item="item"
+        data-id="{{item.id}}"
+        bindtap="applyPanelFilter"
+      >
+        {{item.label}}
       </view>
     </view>
     <view class="filter-panel-actions">
@@ -47,7 +45,7 @@
     </view>
   </view>
 
-  <view class="summary-row">
+  <view class="summary-grid">
     <view class="summary-card" wx:for="{{summaryCards}}" wx:key="label" wx:for-item="item">
       <view class="summary-label">{{item.label}}</view>
       <view class="summary-value">{{item.value}}</view>
@@ -68,17 +66,16 @@
       data-id="{{item.id}}"
       bindtap="openInvoiceDetail"
     >
-      <view class="invoice-head">
+      <view class="invoice-top">
         <view class="invoice-type-group">
-          <view class="selection-mark {{item.selected ? 'selection-mark-active' : ''}}" data-id="{{item.id}}" catchtap="toggleInvoice"></view>
+          <view class="selection-mark {{item.selected ? 'selection-mark-active' : ''}}" data-id="{{item.id}}" catchtap="toggleInvoice">✓</view>
           <view class="invoice-chip">{{item.type}}</view>
           <view class="invoice-chip invoice-chip-light">{{item.source}}</view>
         </view>
         <view class="invoice-amount">{{item.amount}}</view>
       </view>
       <view class="invoice-title">{{item.title}}</view>
-      <view class="invoice-meta">开票日期 {{item.date}}</view>
-      <view class="invoice-meta">{{item.owner}}</view>
+      <view class="invoice-meta">{{item.date}} · {{item.owner}}</view>
       <view class="tag-row">
         <view class="status-tag" wx:for="{{item.tags}}" wx:key="*this" wx:for-item="tag">{{tag}}</view>
       </view>
@@ -87,9 +84,7 @@
   </view>
 
   <view class="bottom-bar">
-    <view class="selection-summary">已选 {{selectedCount}} 张发票</view>
-    <view class="bottom-actions">
-      <view class="secondary-btn" data-label="导出 PDF" data-page="/pages/export-center/index?type=pdf" bindtap="handleAction">导出 PDF</view>
-    </view>
+    <view class="selection-summary">已选 <text>{{selectedCount}}</text> 张</view>
+    <view class="export-btn {{selectedCount === 0 ? 'export-btn-disabled' : ''}}" data-label="导出 PDF" bindtap="handleAction">导出 PDF</view>
   </view>
 </view>

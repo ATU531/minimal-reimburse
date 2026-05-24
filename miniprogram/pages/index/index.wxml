@@ -1,11 +1,37 @@
-<view class="container">
-  <view class="section">
+<view class="home-page">
+  <view class="home-hero">
+    <view class="hero-glow hero-glow-large"></view>
+    <view class="hero-glow hero-glow-small"></view>
+    <view class="hero-content">
+      <view class="hero-pill">
+        <text>智能识别</text>
+        <view class="hero-pulse"></view>
+      </view>
+      <view class="hero-title">让发票整理更从容</view>
+      <view class="hero-desc">OCR 录入 · 原票归档 · PDF 合并导出</view>
+      <view class="hero-stats">
+        <view class="hero-stat" wx:for="{{heroStats}}" wx:key="label" wx:for-item="item">
+          <view class="hero-stat-label">{{item.label}}</view>
+          <view class="hero-stat-value">
+            <text>{{item.value}}</text>
+            <text class="hero-stat-unit" wx:if="{{item.unit}}">{{item.unit}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-block">
     <view class="section-header">
-      <view class="section-title">发票录入</view>
+      <view class="section-title-row">
+        <view class="section-marker"></view>
+        <view class="section-title">便捷发票录入</view>
+      </view>
+      <view class="section-side">支持批量上传</view>
     </view>
     <view class="entry-grid">
       <view
-        class="entry-card"
+        class="entry-card {{item.badge ? 'entry-card-recommended' : ''}}"
         wx:for="{{intakeMethods}}"
         wx:key="id"
         wx:for-item="item"
@@ -13,19 +39,24 @@
         data-label="{{item.title}}"
         data-page="{{item.page}}"
       >
-        <view class="entry-icon">{{item.short}}</view>
+        <view class="entry-badge" wx:if="{{item.badge}}">⚡ {{item.badge}}</view>
+        <image class="entry-icon" src="{{item.icon}}" mode="aspectFit"></image>
         <view class="entry-title">{{item.title}}</view>
+        <view class="entry-desc">{{item.desc}}</view>
       </view>
     </view>
   </view>
 
-  <view class="section">
+  <view class="section-block">
     <view class="section-header">
-      <view class="section-title">核心功能</view>
+      <view class="section-title-row">
+        <view class="section-marker"></view>
+        <view class="section-title">核心服务</view>
+      </view>
     </view>
-    <view class="feature-list">
+    <view class="service-list">
       <view
-        class="feature-card"
+        class="service-card"
         wx:for="{{featureCards}}"
         wx:key="id"
         wx:for-item="item"
@@ -34,27 +65,26 @@
         data-page="{{item.page}}"
         data-label="{{item.title}}"
       >
-        <view class="feature-main">
-          <view class="feature-title-row">
-            <view class="feature-title">{{item.title}}</view>
-            <view class="feature-tag">{{item.tag}}</view>
+        <image class="service-icon" src="{{item.icon}}" mode="aspectFit"></image>
+        <view class="service-main">
+          <view class="service-title-row">
+            <view class="service-title">{{item.title}}</view>
+            <view class="service-tag">{{item.tag}}</view>
           </view>
+          <view class="service-desc">{{item.desc}}</view>
         </view>
-        <view class="feature-arrow">→</view>
+        <view class="service-arrow">›</view>
       </view>
     </view>
   </view>
 
-  <view class="section">
-    <view class="section-header">
-      <view class="section-title">本周提醒</view>
-    </view>
-    <view class="reminder-list">
-      <view class="reminder-card" wx:for="{{reminders}}" wx:key="title" wx:for-item="item">
-        <view class="reminder-label">{{item.title}}</view>
-        <view class="reminder-value">{{item.value}}</view>
-      </view>
+  <view class="info-card">
+    <view class="info-icon">i</view>
+    <view class="info-main">
+      <view class="info-title">原票 PDF 有什么用？</view>
+      <view class="info-desc">电子发票报销时建议同步保留原票附件，票易理可帮助整理并导出原票 PDF 包。</view>
     </view>
   </view>
+
   <view class="page-spacer"></view>
 </view>

@@ -1,5 +1,5 @@
-<view class="page">
-  <view class="hero-card">
+<view class="detail-page">
+  <view class="detail-hero">
     <view class="amount">{{invoice.amount}}</view>
     <view class="title">{{invoice.title}}</view>
     <view class="tag-row">
@@ -47,7 +47,7 @@
     </view>
   </view>
 
-  <view class="bottom-actions">
-    <view class="secondary-btn" wx:if="{{invoice.hasOriginalAttachment && !isLocalDraft}}" data-label="导出 PDF" bindtap="handleTap">导出 PDF</view>
+  <view class="bottom-actions" wx:if="{{invoice.hasOriginalAttachment && !isLocalDraft}}">
+    <view class="secondary-btn" data-label="导出 PDF" bindtap="handleTap">导出 PDF</view>
   </view>
 </view>
