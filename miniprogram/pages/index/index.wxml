@@ -8,7 +8,7 @@
         <view class="hero-pulse"></view>
       </view>
       <view class="hero-title">让发票整理更从容</view>
-      <view class="hero-desc">OCR 录入 · 原票归档 · PDF 合并导出</view>
+      <view class="hero-subtitle">OCR 录入 · 原票归档 · PDF 合并导出</view>
       <view class="hero-stats">
         <view class="hero-stat" wx:for="{{heroStats}}" wx:key="label" wx:for-item="item">
           <view class="hero-stat-label">{{item.label}}</view>
@@ -42,7 +42,7 @@
         <view class="entry-badge" wx:if="{{item.badge}}">⚡ {{item.badge}}</view>
         <image class="entry-icon" src="{{item.icon}}" mode="aspectFit"></image>
         <view class="entry-title">{{item.title}}</view>
-        <view class="entry-desc">{{item.desc}}</view>
+        <view class="entry-subtitle">{{item.subtitle}}</view>
       </view>
     </view>
   </view>
@@ -71,7 +71,7 @@
             <view class="service-title">{{item.title}}</view>
             <view class="service-tag">{{item.tag}}</view>
           </view>
-          <view class="service-desc">{{item.desc}}</view>
+          <view class="service-subtitle">{{item.subtitle}}</view>
         </view>
         <view class="service-arrow">›</view>
       </view>
@@ -82,7 +82,7 @@
     <view class="info-icon">i</view>
     <view class="info-main">
       <view class="info-title">原票 PDF 有什么用？</view>
-      <view class="info-desc">电子发票报销时建议同步保留原票附件，票易理可帮助整理并导出原票 PDF 包。</view>
+      <view class="info-text">电子发票归档时建议同步保留原票附件，票易理可帮助整理并导出原票 PDF 包。</view>
     </view>
   </view>
 

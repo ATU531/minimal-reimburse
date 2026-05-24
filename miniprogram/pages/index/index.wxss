@@ -71,7 +71,7 @@ page {
   color: #FFFFFF;
 }
 
-.hero-desc {
+.hero-subtitle {
   margin-top: 18rpx;
   font-size: 28rpx;
   line-height: 1.5;
@@ -201,7 +201,7 @@ page {
   color: #1F2937;
 }
 
-.entry-desc {
+.entry-subtitle {
   margin-top: 12rpx;
   font-size: 24rpx;
   line-height: 1.35;
@@ -259,7 +259,7 @@ page {
   font-weight: 800;
 }
 
-.service-desc {
+.service-subtitle {
   margin-top: 10rpx;
   font-size: 24rpx;
   color: #8DA0BB;
@@ -308,7 +308,7 @@ page {
   color: #1E1B4B;
 }
 
-.info-desc {
+.info-text {
   margin-top: 8rpx;
   font-size: 22rpx;
   line-height: 1.6;

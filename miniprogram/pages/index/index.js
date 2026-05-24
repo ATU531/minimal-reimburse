@@ -8,7 +8,7 @@ Page({
       {
         id: "ocr",
         title: "智能识别",
-        desc: "拍照或相册AI提取",
+        subtitle: "拍照或相册AI提取",
         icon: "/images/icons/ui-camera.svg",
         badge: "推荐",
         page: "/pages/intake-detail/index?source=ocr",
@@ -16,21 +16,21 @@ Page({
       {
         id: "chat",
         title: "聊天文件",
-        desc: "直接导入微信文件",
+        subtitle: "直接导入微信文件",
         icon: "/images/icons/ui-chat.svg",
         page: "/pages/intake-detail/index?source=chat",
       },
       {
         id: "album",
         title: "手机相册",
-        desc: "上传已有发票照片",
+        subtitle: "上传已有发票照片",
         icon: "/images/icons/ui-gallery.svg",
         page: "/pages/intake-detail/index?source=album",
       },
       {
         id: "manual",
         title: "手动录入",
-        desc: "无原票或手工记账",
+        subtitle: "无原票或手工记账",
         icon: "/images/icons/ui-edit.svg",
         page: "/pages/manual-entry/index",
       },
@@ -39,7 +39,7 @@ Page({
       {
         id: "folder",
         title: "票夹归集",
-        desc: "发票统一归集，快速检索筛选",
+        subtitle: "发票统一归集，快速检索筛选",
         tag: "智能聚合",
         icon: "/images/icons/ui-archive.svg",
         action: "switchTab",
@@ -48,7 +48,7 @@ Page({
       {
         id: "export",
         title: "原票 PDF",
-        desc: "原票附件合并导出，便于归档",
+        subtitle: "原票附件合并导出，便于归档",
         tag: "极速归档",
         icon: "/images/icons/ui-pdf.svg",
         action: "switchTab",
