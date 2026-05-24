@@ -172,3 +172,15 @@ page {
   font-size: 44rpx;
   line-height: 1;
 }
+
+.menu-button {
+  width: 100%;
+  margin: 0;
+  background: #FFFFFF;
+  border-radius: 0;
+  text-align: left;
+}
+
+.menu-button::after {
+  border: none;
+}
