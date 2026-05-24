@@ -135,6 +135,7 @@ page {
   display: flex;
   justify-content: space-between;
   gap: 18rpx;
+  align-items: flex-start;
 }
 
 .invoice-type-group {
@@ -142,6 +143,8 @@ page {
   align-items: center;
   flex-wrap: wrap;
   gap: 12rpx;
+  min-width: 0;
+  flex: 1;
 }
 
 .selection-mark {
@@ -179,10 +182,15 @@ page {
 }
 
 .invoice-amount {
+  flex-shrink: 0;
+  max-width: 240rpx;
   color: #4F46E5;
   font-size: 32rpx;
   line-height: 1.2;
   font-weight: 900;
+  text-align: right;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .invoice-title {
@@ -191,6 +199,9 @@ page {
   line-height: 1.4;
   font-weight: 900;
   color: #1F2937;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .invoice-meta {
@@ -198,6 +209,9 @@ page {
   font-size: 23rpx;
   color: #8DA0BB;
   font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .tag-row {

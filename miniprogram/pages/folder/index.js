@@ -88,14 +88,19 @@ Page({
       },
     ],
   },
-  onLoad() {
+  consumeDefaultFilter() {
     const defaultFilter = wx.getStorageSync("folderDefaultFilter");
     if (defaultFilter) {
       wx.removeStorageSync("folderDefaultFilter");
       this.setData({
         activeFilter: defaultFilter,
       });
+      return defaultFilter;
     }
+    return "";
+  },
+  onLoad() {
+    this.consumeDefaultFilter();
   },
   getCurrentMonthPrefix() {
     const now = new Date();
@@ -104,6 +109,7 @@ Page({
     return `${year}-${month}`;
   },
   onShow() {
+    this.consumeDefaultFilter();
     this.syncLocalDrafts().finally(() => {
       this.fetchInvoices();
     });
@@ -283,7 +289,7 @@ Page({
         name: "quickstartFunctions",
         data: {
           type: "listInvoices",
-          activeFilter: this.data.activeFilter,
+          activeFilter: "all",
           searchKeyword: this.data.searchKeyword,
         },
       })
@@ -383,11 +389,20 @@ Page({
       }
       return item;
     });
+    const allInvoices = this.data.allInvoices.map((item) => {
+      if (item.id === currentId) {
+        return Object.assign({}, item, {
+          selected: !item.selected,
+        });
+      }
+      return item;
+    });
     const selectedCount = invoices.filter((item) => item.selected).length;
     this.setData({
       invoices,
+      allInvoices,
       selectedCount,
-      summaryCards: this.buildSummaryCards(this.data.allInvoices, selectedCount),
+      summaryCards: this.buildSummaryCards(allInvoices, selectedCount),
     });
   },
   openInvoiceDetail(e) {
