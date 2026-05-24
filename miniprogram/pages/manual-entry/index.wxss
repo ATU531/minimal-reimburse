@@ -3,7 +3,7 @@ page {
 }
 
 .manual-page {
-  padding: 24rpx 32rpx 170rpx;
+  padding: 24rpx 32rpx calc(170rpx + env(safe-area-inset-bottom));
 }
 
 .manual-sheet,

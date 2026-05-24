@@ -47,7 +47,7 @@
     </view>
   </view>
 
-  <view class="bottom-actions">
-    <view class="secondary-btn" wx:if="{{invoice.hasOriginalAttachment && !isLocalDraft}}" data-label="导出 PDF" bindtap="handleTap">导出 PDF</view>
+  <view class="bottom-actions" wx:if="{{invoice.hasOriginalAttachment && !isLocalDraft}}">
+    <view class="secondary-btn" data-label="导出 PDF" bindtap="handleTap">导出 PDF</view>
   </view>
 </view>
