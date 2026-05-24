@@ -4,10 +4,15 @@ const tcloud = require("tencentcloud-sdk-nodejs");
 
 const OcrClient = tcloud.ocr.v20181119.Client;
 
-const localConfig = require("./cloudfunctions/quickstartFunctions/config.local.json");
-const SECRET_ID = localConfig.tencent.secretId;
-const SECRET_KEY = localConfig.tencent.secretKey;
-const REGION = localConfig.tencent.region || "ap-beijing";
+const SECRET_ID = process.env.TENCENT_SECRET_ID || "";
+const SECRET_KEY = process.env.TENCENT_SECRET_KEY || "";
+const REGION = process.env.TENCENT_REGION || "ap-beijing";
+
+if (!SECRET_ID || !SECRET_KEY) {
+  console.error("缺少腾讯云 OCR 环境变量：TENCENT_SECRET_ID / TENCENT_SECRET_KEY");
+  console.error("可选环境变量：TENCENT_REGION，默认 ap-beijing");
+  process.exit(1);
+}
 
 async function testOcr() {
   console.log("=" .repeat(60));
