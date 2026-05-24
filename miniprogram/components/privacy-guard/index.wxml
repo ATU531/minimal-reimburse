@@ -1,0 +1,13 @@
+<view wx:if="{{showPrivacyDialog}}" class="privacy-mask">
+  <view class="privacy-card" catchtap="noop">
+    <view class="privacy-title">用户隐私保护提示</view>
+    <view class="privacy-desc">
+      票易理会按照《用户隐私保护指引》处理发票收集、原票归档和 PDF 导出所需的信息。
+    </view>
+    <view class="privacy-link" bindtap="openPrivacyContract">查看《{{privacyContractName}}》</view>
+    <view class="privacy-actions">
+      <button class="privacy-button privacy-button-secondary" bindtap="keepPrivacyDialog">暂不同意</button>
+      <button class="privacy-button privacy-button-primary" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="handleAgreePrivacyAuthorization">同意并继续</button>
+    </view>
+  </view>
+</view>

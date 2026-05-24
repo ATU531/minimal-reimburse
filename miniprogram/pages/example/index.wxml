@@ -50,6 +50,7 @@
   </view>
 </block>
 
+<privacy-guard />
 <block wx:if="{{ type === 'createCollection' }}">
   <view class="page-container">
     <view class="title">功能介绍</view>
@@ -290,5 +291,4 @@
     </view>
   </view>
 </block>
-
 

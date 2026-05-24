@@ -80,3 +80,4 @@
     <view class="primary-btn" data-label="生成 PDF" bindtap="handleTap">{{creating ? '生成中...' : '生成 PDF'}}</view>
   </view>
 </view>
+<privacy-guard />

@@ -12,6 +12,9 @@
     "pages/export-center/index",
     "pages/example/index"
   ],
+  "usingComponents": {
+    "privacy-guard": "/components/privacy-guard/index"
+  },
   "window": {
     "backgroundColor": "#F4F7FB",
     "backgroundTextStyle": "light",
@@ -46,6 +49,7 @@
     ]
   },
   "sitemapLocation": "sitemap.json",
+  "__usePrivacyCheck__": true,
   "style": "v2",
   "lazyCodeLoading": "requiredComponents"
 }

@@ -1,0 +1,76 @@
+.privacy-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56rpx;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.privacy-card {
+  width: 100%;
+  max-width: 620rpx;
+  overflow: hidden;
+  border-radius: 24rpx;
+  background: #FFFFFF;
+  box-shadow: 0 24rpx 60rpx rgba(15, 23, 42, 0.18);
+}
+
+.privacy-title {
+  padding: 44rpx 42rpx 18rpx;
+  color: #111827;
+  font-size: 32rpx;
+  font-weight: 900;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.privacy-desc {
+  padding: 0 42rpx;
+  color: #64748B;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.privacy-link {
+  padding: 22rpx 42rpx 34rpx;
+  color: #4F46E5;
+  font-size: 26rpx;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.privacy-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 2rpx solid #EEF2F7;
+}
+
+.privacy-button {
+  height: 96rpx;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: #FFFFFF;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 96rpx;
+}
+
+.privacy-button::after {
+  border: none;
+}
+
+.privacy-button-secondary {
+  color: #64748B;
+  border-right: 2rpx solid #EEF2F7;
+}
+
+.privacy-button-primary {
+  color: #4F46E5;
+}

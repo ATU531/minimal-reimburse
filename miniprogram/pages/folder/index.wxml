@@ -63,3 +63,4 @@
     <view class="export-btn {{selectedCount === 0 ? 'export-btn-disabled' : ''}}" data-label="导出 PDF" bindtap="handleAction">导出 PDF</view>
   </view>
 </view>
+<privacy-guard />

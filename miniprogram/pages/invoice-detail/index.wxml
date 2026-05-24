@@ -51,3 +51,4 @@
     <view class="secondary-btn" data-label="导出 PDF" bindtap="handleTap">导出 PDF</view>
   </view>
 </view>
+<privacy-guard />
