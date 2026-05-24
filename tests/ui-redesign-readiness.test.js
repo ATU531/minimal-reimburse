@@ -46,6 +46,26 @@ const homeJs = read("miniprogram", "pages", "index", "index.js");
 const homeWxss = read("miniprogram", "pages", "index", "index.wxss");
 assertIncludes(homeWxml, "home-hero", "home wxml");
 assertIncludes(homeWxml, "核心服务", "home wxml");
+assertNotIncludes(homeWxml, "支持批量上传", "home wxml");
+assertIncludes(homeJs, "本月票据数", "home js");
+assertIncludes(homeJs, "本月合计金额", "home js");
+assertIncludes(homeJs, "fetchHomeStats", "home js");
+assertIncludes(homeJs, 'type: "listInvoices"', "home js");
+assertIncludes(homeJs, 'activeFilter: "month"', "home js");
+assertIncludes(
+  homeJs,
+  "const remoteMonthInvoices = this.filterCurrentMonthInvoices(",
+  "home js"
+);
+assertIncludes(
+  homeJs,
+  "this.updateHeroStats(this.mergeInvoices(remoteMonthInvoices, localMonthInvoices));",
+  "home js"
+);
+assertNotIncludes(homeJs, "本月未整理发票", "home js");
+assertNotIncludes(homeJs, "本月录入金额", "home js");
+assertNotIncludes(homeJs, 'value: "2"', "home js");
+assertNotIncludes(homeJs, "¥868.69", "home js");
 assertIncludes(homeJs, "ui-camera.svg", "home js");
 assertIncludes(homeJs, "ui-chat.svg", "home js");
 assertIncludes(homeJs, "ui-gallery.svg", "home js");

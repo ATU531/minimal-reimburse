@@ -27,7 +27,6 @@
         <view class="section-marker"></view>
         <view class="section-title">便捷发票录入</view>
       </view>
-      <view class="section-side">支持批量上传</view>
     </view>
     <view class="entry-grid">
       <view

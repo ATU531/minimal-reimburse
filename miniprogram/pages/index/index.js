@@ -1,8 +1,10 @@
+const LOCAL_INVOICES_STORAGE_KEY = "localDraftInvoices";
+
 Page({
   data: {
     heroStats: [
-      { label: "本月未整理发票", value: "2", unit: "张" },
-      { label: "本月录入金额", value: "¥868.69", unit: "" },
+      { label: "本月票据数", value: "0", unit: "张" },
+      { label: "本月合计金额", value: "¥0.00", unit: "" },
     ],
     intakeMethods: [
       {
@@ -55,6 +57,107 @@ Page({
         page: "/pages/folder/index?filter=ready",
       },
     ],
+  },
+  onShow() {
+    this.fetchHomeStats();
+  },
+  getCurrentMonthPrefix() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    return `${year}-${month}`;
+  },
+  formatAmount(amountInCents) {
+    return `¥${(Number(amountInCents || 0) / 100).toFixed(2)}`;
+  },
+  getInvoiceAmount(invoice) {
+    return Number(invoice.totalAmount || invoice.amount || 0);
+  },
+  getInvoiceDate(invoice) {
+    return String(invoice.issueDate || invoice.date || "");
+  },
+  getInvoiceMonthPrefix(invoice) {
+    const dateText = this.getInvoiceDate(invoice);
+    const matched = dateText.match(/^(\d{4})[-/.年](\d{1,2})/);
+    if (!matched) {
+      return "";
+    }
+    return `${matched[1]}-${String(matched[2]).padStart(2, "0")}`;
+  },
+  getLocalDraftInvoices() {
+    return wx.getStorageSync(LOCAL_INVOICES_STORAGE_KEY) || [];
+  },
+  filterCurrentMonthInvoices(invoices, monthPrefix = this.getCurrentMonthPrefix()) {
+    return (invoices || []).filter((invoice) =>
+      this.getInvoiceMonthPrefix(invoice) === monthPrefix
+    );
+  },
+  getInvoiceIdentity(invoice, fallbackIndex) {
+    const invoiceCode = String(invoice.invoiceCode || "").trim();
+    const invoiceNumber = String(invoice.invoiceNumber || "").trim();
+    if (invoiceCode && invoiceNumber) {
+      return `${invoiceCode}|${invoiceNumber}`;
+    }
+    return (
+      invoice._id ||
+      invoice.id ||
+      [
+        invoice.invoiceCode,
+        invoice.invoiceNumber,
+        this.getInvoiceDate(invoice),
+        this.getInvoiceAmount(invoice),
+        invoice.title,
+      ]
+        .filter(Boolean)
+        .join("|") ||
+      `invoice-${fallbackIndex}`
+    );
+  },
+  mergeInvoices(remoteInvoices, localInvoices) {
+    const mergedMap = {};
+    [...(localInvoices || []), ...(remoteInvoices || [])].forEach((item, index) => {
+      mergedMap[this.getInvoiceIdentity(item, index)] = item;
+    });
+    return Object.values(mergedMap);
+  },
+  updateHeroStats(invoices) {
+    const totalAmount = (invoices || []).reduce(
+      (total, invoice) => total + this.getInvoiceAmount(invoice),
+      0
+    );
+    this.setData({
+      heroStats: [
+        { label: "本月票据数", value: String((invoices || []).length), unit: "张" },
+        { label: "本月合计金额", value: this.formatAmount(totalAmount), unit: "" },
+      ],
+    });
+  },
+  fetchHomeStats() {
+    const monthPrefix = this.getCurrentMonthPrefix();
+    const localMonthInvoices = this.filterCurrentMonthInvoices(
+      this.getLocalDraftInvoices(),
+      monthPrefix
+    );
+    wx.cloud
+      .callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "listInvoices",
+          activeFilter: "month",
+          monthPrefix,
+        },
+      })
+      .then((response) => {
+        const remoteInvoices = (response.result && response.result.data) || [];
+        const remoteMonthInvoices = this.filterCurrentMonthInvoices(
+          remoteInvoices,
+          monthPrefix
+        );
+        this.updateHeroStats(this.mergeInvoices(remoteMonthInvoices, localMonthInvoices));
+      })
+      .catch(() => {
+        this.updateHeroStats(localMonthInvoices);
+      });
   },
   handleEntryTap(e) {
     const { page, label } = e.currentTarget.dataset;
