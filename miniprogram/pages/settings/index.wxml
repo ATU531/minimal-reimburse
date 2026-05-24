@@ -20,7 +20,7 @@
       <button class="action action-primary" bindtap="showNewTitleForm">立即添加</button>
     </view>
 
-    <view wx:if="{{invoiceTitles.length > 0}}" class="title-list">
+    <view wx:if="{{!showTitleForm && invoiceTitles.length}}" class="title-list">
       <view class="title-card" wx:for="{{invoiceTitles}}" wx:key="id" wx:for-item="item">
         <view class="title-card-head">
           <view class="title-main">

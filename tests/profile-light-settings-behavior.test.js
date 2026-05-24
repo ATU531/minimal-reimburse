@@ -40,7 +40,10 @@ const loadPage = (...parts) => {
     showModal(options) {
       storage.__lastModal = options;
       if (options && typeof options.success === "function") {
-        options.success({ confirm: true });
+        const confirm =
+          typeof storage.__nextModalConfirm === "boolean" ? storage.__nextModalConfirm : true;
+        delete storage.__nextModalConfirm;
+        options.success({ confirm });
       }
     },
     navigateTo(options) {
@@ -131,7 +134,25 @@ assert.strictEqual(
   "new stored default should be active"
 );
 
-settingsPage.deleteTitle({ currentTarget: { dataset: { id: settingsPage.data.invoiceTitles[1].id } } });
+const titleToDeleteId = settingsPage.data.invoiceTitles[1].id;
+settingsPage.__storage.__nextModalConfirm = false;
+settingsPage.deleteTitle({ currentTarget: { dataset: { id: titleToDeleteId } } });
+assert.strictEqual(settingsPage.data.invoiceTitles.length, 2, "cancel delete should keep selected title");
+assert.strictEqual(settingsPage.__storage.profileInvoiceTitles.length, 2, "cancel delete should keep storage");
+assert.strictEqual(settingsPage.__storage.__lastModal.title, "删除抬头", "delete should show confirmation title");
+assert.strictEqual(
+  settingsPage.__storage.__lastModal.content,
+  "删除后不会影响已保存的发票记录。",
+  "delete should explain saved invoices are unaffected"
+);
+assert.strictEqual(settingsPage.__storage.__lastModal.confirmText, "删除", "delete confirm text should be explicit");
+assert.strictEqual(
+  settingsPage.__storage.__lastModal.confirmColor,
+  "#D92D20",
+  "delete confirm color should be destructive"
+);
+
+settingsPage.deleteTitle({ currentTarget: { dataset: { id: titleToDeleteId } } });
 assert.strictEqual(settingsPage.data.invoiceTitles.length, 1, "delete should remove selected title");
 assert.strictEqual(settingsPage.data.invoiceTitles[0].isDefault, true, "remaining title should become default");
 assert.strictEqual(settingsPage.__storage.profileInvoiceTitles.length, 1, "delete should remove selected title from storage");
@@ -146,6 +167,21 @@ settingsPage.handleTitleInput({ currentTarget: { dataset: { field: "name" } }, d
 settingsPage.handleTitleInput({ currentTarget: { dataset: { field: "taxNumber" } }, detail: { value: "bad-tax-number" } });
 settingsPage.saveTitleForm();
 assert.strictEqual(settingsPage.data.titleErrors.taxNumber, "纳税人识别号格式不正确");
+
+const pollutedSettingsPage = loadPage("miniprogram", "pages", "settings", "index.js");
+pollutedSettingsPage.__storage.profileInvoiceTitles = "bad";
+assert.doesNotThrow(() => {
+  pollutedSettingsPage.onLoad({ section: "title" });
+}, "settings should tolerate polluted invoice title storage");
+assert(
+  Array.isArray(pollutedSettingsPage.data.invoiceTitles),
+  "polluted invoice title storage should load as an array"
+);
+assert.strictEqual(
+  pollutedSettingsPage.data.invoiceTitles.length,
+  0,
+  "polluted invoice title storage should load as an empty list"
+);
 
 const profilePage = loadPage("miniprogram", "pages", "profile", "index.js");
 profilePage.__storage.profileInvoiceTitles = [

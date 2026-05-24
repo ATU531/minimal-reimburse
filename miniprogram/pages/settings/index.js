@@ -39,18 +39,21 @@ const trimTitleForm = (form) => ({
   isDefault: !!form.isDefault,
 });
 
-const normalizeDefaultTitle = (titles) => {
-  if (!titles.length) {
+const applyDefaultRule = (titles) => {
+  const safeTitles = Array.isArray(titles) ? titles : [];
+  if (!safeTitles.length) {
     return [];
   }
 
-  const defaultIndex = titles.findIndex((item) => item.isDefault);
+  const defaultIndex = safeTitles.findIndex((item) => item.isDefault);
   const activeIndex = defaultIndex >= 0 ? defaultIndex : 0;
-  return titles.map((item, index) => ({
+  return safeTitles.map((item, index) => ({
     ...item,
     isDefault: index === activeIndex,
   }));
 };
+
+const loadInvoiceTitles = () => applyDefaultRule(wx.getStorageSync(INVOICE_TITLES_STORAGE_KEY));
 
 Page({
   data: {
@@ -96,17 +99,16 @@ Page({
   onLoad(options = {}) {
     const section = options.section || "title";
     const activeSection = SECTION_MAP[section] ? section : "title";
-    const storedTitles = wx.getStorageSync(INVOICE_TITLES_STORAGE_KEY) || [];
 
     this.setData({
       activeSection,
       currentSection: SECTION_MAP[activeSection],
-      invoiceTitles: normalizeDefaultTitle(storedTitles),
+      invoiceTitles: loadInvoiceTitles(),
     });
   },
 
-  persistTitles(titles) {
-    const normalizedTitles = normalizeDefaultTitle(titles);
+  persistInvoiceTitles(titles) {
+    const normalizedTitles = applyDefaultRule(titles);
     wx.setStorageSync(INVOICE_TITLES_STORAGE_KEY, normalizedTitles);
     this.setData({
       invoiceTitles: normalizedTitles,
@@ -203,7 +205,7 @@ Page({
       }));
     }
 
-    this.persistTitles(nextTitles);
+    this.persistInvoiceTitles(nextTitles);
     this.cancelTitleForm();
   },
 
@@ -213,15 +215,28 @@ Page({
       ...item,
       isDefault: item.id === id,
     }));
-    this.persistTitles(nextTitles);
+    this.persistInvoiceTitles(nextTitles);
   },
 
   deleteTitle(e) {
     const { id } = e.currentTarget.dataset;
-    const nextTitles = this.data.invoiceTitles.filter((item) => item.id !== id);
-    this.persistTitles(nextTitles);
-    if (this.data.editingTitleId === id) {
-      this.cancelTitleForm();
-    }
+    wx.showModal({
+      title: "删除抬头",
+      content: "删除后不会影响已保存的发票记录。",
+      confirmText: "删除",
+      confirmColor: "#D92D20",
+      success: (res) => {
+        if (!res.confirm) {
+          return;
+        }
+
+        const currentTitles = Array.isArray(this.data.invoiceTitles) ? this.data.invoiceTitles : [];
+        const nextTitles = currentTitles.filter((item) => item.id !== id);
+        this.persistInvoiceTitles(nextTitles);
+        if (this.data.editingTitleId === id) {
+          this.cancelTitleForm();
+        }
+      },
+    });
   },
 });
