@@ -82,6 +82,11 @@ assertIncludes(folderJs, "getCurrentMonthPrefix", "folder js");
 assertNotIncludes(folderJs, 'startsWith("2026-03")', "folder js");
 assertIncludes(folderWxml, "ui-search.svg", "folder wxml");
 assertIncludes(folderWxml, "export-btn-disabled", "folder wxml");
+assertIncludes(
+  folderWxml,
+  '<view class="detail-link" data-id="{{item.id}}" catchtap="openInvoiceDetail">查看详情</view>',
+  "folder wxml"
+);
 
 const profileWxml = read("miniprogram", "pages", "profile", "index.wxml");
 assertIncludes(profileWxml, "profile-hero", "profile wxml");

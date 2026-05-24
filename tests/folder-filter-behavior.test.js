@@ -41,6 +41,18 @@ const cloudIndex = read("cloudfunctions", "quickstartFunctions", "index.js");
 });
 
 assertIncludes(folderWxml, 'bindtap="refreshCurrentFilter"', "folder wxml");
+const invoiceCardTagMatch = folderWxml.match(/<view\n      wx:if="{{invoices.length}}"[\s\S]*?\n    >/);
+assert(invoiceCardTagMatch, "folder wxml should include invoice card item");
+assertNotIncludes(
+  invoiceCardTagMatch[0],
+  'bindtap="openInvoiceDetail"',
+  "folder invoice card root"
+);
+assertIncludes(
+  folderWxml,
+  '<view class="detail-link" data-id="{{item.id}}" catchtap="openInvoiceDetail">查看详情</view>',
+  "folder wxml"
+);
 assertIncludes(folderJs, "refreshCurrentFilter()", "folder js");
 assertIncludes(folderJs, "const invoiceCount = invoices.length", "folder js");
 assertIncludes(folderJs, '{ label: "票据数", value: String(invoiceCount) }', "folder js");

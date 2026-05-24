@@ -40,7 +40,6 @@
       wx:key="id"
       wx:for-item="item"
       data-id="{{item.id}}"
-      bindtap="openInvoiceDetail"
     >
       <view class="invoice-top">
         <view class="invoice-type-group">
@@ -55,7 +54,7 @@
       <view class="tag-row">
         <view class="status-tag" wx:for="{{item.tags}}" wx:key="*this" wx:for-item="tag">{{tag}}</view>
       </view>
-      <view class="detail-link">查看详情</view>
+      <view class="detail-link" data-id="{{item.id}}" catchtap="openInvoiceDetail">查看详情</view>
     </view>
   </view>
 
