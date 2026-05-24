@@ -46,6 +46,17 @@ const loadPage = (...parts) => {
     navigateTo(options) {
       storage.__lastNavigate = options;
     },
+    cloud: {
+      callFunction(options) {
+        storage.__lastCloudCall = options;
+        return Promise.resolve({
+          result: {
+            success: true,
+            data: [],
+          },
+        });
+      },
+    },
   };
   vm.runInNewContext(pageSource, {
     Page(config) {
