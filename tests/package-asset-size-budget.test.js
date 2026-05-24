@@ -3,22 +3,25 @@ const fs = require('fs');
 const path = require('path');
 
 const repoRoot = path.resolve(__dirname, '..');
-const miniprogramRoot = path.join(repoRoot, 'miniprogram');
 const maxAssetBytes = 200 * 1024;
 const assetExtensions = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp3', '.wav', '.aac', '.m4a']);
+const ignoredDirs = new Set(['.git', 'node_modules']);
 
 function listFiles(dir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   return entries.flatMap((entry) => {
     const entryPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
+      if (ignoredDirs.has(entry.name)) {
+        return [];
+      }
       return listFiles(entryPath);
     }
     return [entryPath];
   });
 }
 
-const oversizedAssets = listFiles(miniprogramRoot)
+const oversizedAssets = listFiles(repoRoot)
   .filter((filePath) => assetExtensions.has(path.extname(filePath).toLowerCase()))
   .map((filePath) => ({
     filePath,
