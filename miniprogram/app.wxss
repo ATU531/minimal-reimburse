@@ -1,26 +1,40 @@
 /**app.wxss**/
+page {
+  background: #F4F7FB;
+  color: #1F2937;
+  font-family: Inter, "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
 .container {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-} 
+}
+
+view,
+text,
+input,
+textarea,
+picker {
+  box-sizing: border-box;
+  font-family: Inter, "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+}
 
 button {
   background: initial;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  font-family: Inter, "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
 }
 
-button:focus{
+button:focus {
   outline: 0;
 }
 
-button::after{
+button::after {
   border: none;
-}
-
-
-page {
-  background: #f4f7fb;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
 }
