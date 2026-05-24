@@ -2,8 +2,8 @@ Page({
   data: {
     profileStats: [
       { label: "常用抬头", value: "2" },
-      { label: "导出模板", value: "1" },
-      { label: "归档方式", value: "PDF" },
+      { label: "导出模板", value: "5" },
+      { label: "常用科目", value: "9" },
     ],
     menuGroups: [
       {
