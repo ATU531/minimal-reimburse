@@ -1,0 +1,15 @@
+node_modules/*
+.superpowers/
+.worktrees/
+config.local.json
+*.local.json
+cloudfunctions/quickstartFunctions/node_modules/*
+滴滴电子发票.pdf
+发票.png
+票易理头像.png
+小程序头像.png
+invoices-1776325184588.pdf
+docs/functional-design.md
+docs/requirements.md
+docs/superpowers/*
+票易理UI设计.html
